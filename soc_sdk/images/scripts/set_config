@@ -1,0 +1,6 @@
+# <- this is for comment / total file size must be less than 4KB
+setenv bootargs ubi.mtd=UBI,2048 root=/dev/mtdblock8 rootfstype=squashfs ro init=/linuxrc LX_MEM=0xffe0000 mma_heap=mma_heap_name0,miu=0,sz=0x9E9C000 mma_heap=mma_heap_ipu,miu=0,sz=0x164000 cma=2M $(mtdparts)
+setenv bootcmd ' nand read.e 0x22000000 KERNEL 0x500000; bootm 0x22000000;nand read.e 0x22000000 RECOVERY 0x500000; bootm 0x22000000
+saveenv
+reset
+% <- this is end of file symbol
