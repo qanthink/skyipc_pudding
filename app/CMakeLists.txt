@@ -28,6 +28,7 @@ add_subdirectory(live555rtsp)
 #add_subdirectory(wifi)
 add_subdirectory(ffmpeg)
 add_subdirectory(queue)
+add_subdirectory(spi)
 
 include_directories(
 	system/sensor
@@ -49,6 +50,7 @@ include_directories(
 	wifi/include
 	ffmpeg
 	queue
+	spi
 )
 
 link_directories(
@@ -69,6 +71,7 @@ link_directories(
 	../thirdparty/live555/lib
 	ffmpeg
 	queue
+	spi
 )
 
 #增加需要编译的源文件
@@ -81,5 +84,7 @@ add_executable(skyipc ${DIR_SRC}) # 生成可执行文件
 target_link_libraries(skyipc 
 		#mi_sys libavtp.a libverify-uclibc-4.9.4.a sensor vif vpe venc sys ai ao ircut aac aad testing rgn wifi 
 		live555rtsp 
-		ffmpeg queue)
+		ffmpeg queue
+		spi
+		)
 

@@ -2,18 +2,18 @@
 
 static void setGpioValue(char *port, char *value)
 {
-	char com[100] = {0};
-	sprintf(com, "echo %s > /sys/class/gpio/export", port);
-	system(com);
+	char cmd[100] = {0};
+	sprintf(cmd, "echo %s > /sys/class/gpio/export", port);
+	system(cmd);
 
-	sprintf(com, "echo out > /sys/class/gpio/gpio%s/direction", port);
-	system(com);
+	sprintf(cmd, "echo out > /sys/class/gpio/gpio%s/direction", port);
+	system(cmd);
 
-	sprintf(com, "echo %s >  /sys/class/gpio/gpio%s/value", value, port);
-	system(com);
+	sprintf(cmd, "echo %s >  /sys/class/gpio/gpio%s/value", value, port);
+	system(cmd);
 
-	sprintf(com, "echo %s > /sys/class/gpio/unexport", port);
-	system(com);
+	sprintf(cmd, "echo %s > /sys/class/gpio/unexport", port);
+	system(cmd);
 }
 
 IrCut::IrCut()

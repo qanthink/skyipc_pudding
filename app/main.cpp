@@ -8,14 +8,14 @@ sigma star版权所有。
 
 #include "sys.h"
 #include "sensor.hpp"
-#include "vif.h"
-#include "vpe.h"
-#include "venc.h"
+#include "mi_vif.h"
+#include "mi_vpe.h"
+#include "mi_venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
 #include "aac.h"
 #include "aad.h"
-#include "rgn.h"
+#include "mi_rgn.h"
 #include "wifi.h"
 #include "avtp.h"
 #include "testing.h"
@@ -25,6 +25,8 @@ sigma star版权所有。
 #include "queue.h"
 
 #include "spidev.h"
+#include "spi.h"
+//#include <linux/gpio.h>
 
 using namespace std;
 
@@ -303,202 +305,274 @@ int SPI_LookBackTest(void)
     return ret;
 }
 
+#if 0
+static void setGpioValue(int port, const char *direction, int value)
+{
+	char cmd[100] = {0};
+	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
+	cout << cmd << endl;
+	system(cmd);
+
+	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
+	cout << cmd << endl;
+	system(cmd);
+
+	sprintf(cmd, "echo %d > /sys/class/gpio/gpio%d/value", value, port);
+	cout << cmd << endl;
+	system(cmd);
+
+	sprintf(cmd, "echo %d > /sys/class/gpio/unexport", port);
+	cout << cmd << endl;
+	system(cmd);
+}
+#endif
+
+void spiPanelReset()
+{
+	int port = 46;
+	const char *direction = "out";
+	int val = 0;	// 0 = low; 1 = high;
+
+	//setGpioValue(port, "out", val);
+	usleep(100 * 1000);		// n * 1000 = n ms.
+	
+	val = 1;
+	//setGpioValue(port, "out", val);
+	usleep(100 * 1000);		// n * 1000 = n ms.
+}
+
+void spiPanelWrite(uint8_t *dataBuf, int dataLen)
+{
+	#if 0
+	#endif
+
+	SPI_Write(dataBuf, dataLen);
+}
+
+void spiPanelWriteCmd(uint8_t *dataBuf, int dataLen)
+{
+	int port = 47;
+	const char *direction = "out";
+	int val = 0;	// 0 = low; 1 = high;
+
+	val = 0;
+	//setGpioValue(port, "out", val);
+	//usleep(100 * 1000);		// n * 1000 = n ms.
+	spiPanelWrite(dataBuf, dataLen);
+}
+
+void spiPanelWriteData(uint8_t *dataBuf, int dataLen)
+{
+	int port = 47;
+	const char *direction = "out";
+	int val = 0;	// 0 = low; 1 = high;
+
+	val = 1;
+	//setGpioValue(port, "out", val);
+	//usleep(100 * 1000);		// n * 1000 = n ms.
+	spiPanelWrite(dataBuf, dataLen);
+}
 
 int main(int argc, const char *argv[])
 {
-	/*
-		统一采用C++单例设计模式，getInstance() 为各模块实例的统一入口函数。
-		单例模式不存在重复初始化的问题，在调用之初执行构造，后续其它地方的调用时间开销小。
-		风格尽量趋近于C, 避免C++11 及之后的高级用法。
-		库函数尽可能使用linux 标准库函数，高效，可调试性高。暂不考虑linux->otherOS 的移植问题。
-	*/
+	Spi *spi = Spi::getInstance();
+	spi->GPIO_INIT();
+	spi->fun();
 
 #if 0
-	signal(SIGINT, sigHandler);
-
-	IrCut::getInstance()->resetFilter();	// ircut滤波片复位
-	IrCut::getInstance()->closeFilter();
-
-	// 系统初始化
-	Sys *pSys = Sys::getInstance();
-	// 出图模块初始化。数据流向：sensor -> vif -> vpe -> venc -> 应用处理。
-	Sensor *pSensor = Sensor::getInstance();// sensor 初始化
-	pSensor->setFps(60);
-	Vif *pVif = Vif::getInstance();			// VIF 初始化
-	Vpe *pVpe = Vpe::getInstance();			// VPE 初始化
-	pVpe->createMainPort(Vpe::vpeMainPort);	// 创建VPE 主码流
-	//pVpe->createSubPort(Vpe::vpeSubPort);	// 创建VPE 子码流
-	//pVpe->createJpegPort(Vpe::vpeJpegPort);	// 创建VPE JPEG码流
-	
-	Venc *pVenc = Venc::getInstance();		// VENC 初始化
-	pVenc->createMainStream(Venc::vencMainChn, NULL);	// 创建VENC主码流
-	//pVenc->createSubStream(Venc::vencSubChn, NULL);		// 创建VENC子码流
-	//pVenc->createJpegStream(Venc::vencJpegChn, NULL);	// 创建VENC-JPEG码流
-	
-	// 绑定VIF -> VPE. 只需要绑定一次，用REALTIME
-	pSys->bindVif2Vpe(Vif::vifPort, Vpe::vpeInputPort, 60, 60, E_MI_SYS_BIND_TYPE_REALTIME, 0);
-	// 绑定VPE -> VENC, 如果有多路码流，则需要绑定多次。
-	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencMainChn, 60, 60, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
-	//pSys->bindVpe2Venc(Vpe::vpeSubPort, Venc::vencSubChn, 30, 30, E_MI_SYS_BIND_TYPE_REALTIME, 0);
-	//pSys->bindVpe2Venc(Vpe::vpeJpegPort, Venc::vencJpegChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
-
-	// 初始化OSD
-	#if (1 == (USE_OSD))
-	Rgn *pRgn = Rgn::getInstance();
-	#endif
-	
-	// AI 和AO 属于两个模块，分别初始化。
-	#if (1 == (USE_AI))
-	audioIn *pAudioIn = audioIn::getInstance();
-	#endif
-	
-	#if (1 == (USE_AO))
-	audioOut *pAudioOut = audioOut::getInstance();
-	#endif
-	
-	#if (1 == (USE_FAAC_FAAD))
-	// 音频编/解码初始化。aac = audio coder; aad = audio decoder.
-	Aac *pAac = Aac::getInstance();
-	Aad *pAad = Aad::getInstance();
-	#endif
-
-	#if (1 == (USE_WIFILINK))
-	Wifi *pWifi = Wifi::getInstance();
-	pWifi->enable();
-	#endif
-
-	/*
-		至此，SENSOR, VIF, VPE, VENC, AI, AO, OSD 均已初始化完成。
-		以下代码的功能为通过音视频传输协议将数据传输给另一台设备。
-	*/
-	
-	#if (1 == (USE_MINDSDK_AUDIO))
-	// avtp 传输协议。
-	Mindsdk_Audio& audio = *Mindsdk_Audio::getInstance();
-	audio.cb_recvAudio = recvAudio;
-	audio.start();
-	#endif
-
-	#if (1 == (USE_MINDSDK_VIDEO))
-	// avtp 传输协议。
-	Mindsdk_Video &Video = *Mindsdk_Video::getInstance();
-	Video.cb_startVideo = startVideo;
-	Video.cb_stopVideo = stopVideo;
-	Video.cb_getNextViFrame = getNextViFrame;
-	Video.cb_changeBit = changeBit;
-	Video.start();
-	#endif
-
-	int ret = 0;
-	#if (1 == (TEST_RTSPSERVER_LOCALFILE))
-	pthread_t tidRtsp = -1;
-	const char *fileName = NULL;
-	//fileName = "/mnt/linux/Downloads/videotest/1.mp4";
-	fileName = "/mnt/linux/Downloads/material/test.264";
-	ret = pthread_create(&tidRtsp, NULL, createRtspServerBy265LocalFile, (void *)fileName);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3) for RTSP, " << strerror(errno) << endl;
-	}
-	cout << "routeVideo" << endl;
-	#endif
-	
-	#if (1 == (TEST_RTSPSERVER_LIVESTREAM))
-	Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
-	#endif
-
-	#if (1 == (USE_FFMPEG))
-	Ffmpeg *pFfmpeg = Ffmpeg::getInstance();
-	#endif
-
-	// 创建3个线程，分别用于测试AI, AO, 出图。
-	#if (1 == (USE_AI))
-	pthread_t tidAi = -1;
-	ret = pthread_create(&tidAi, NULL, routeAi, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3) for AI, " << strerror(errno) << endl;
-	}
-	#endif
-
-	#if (1 == (USE_AO))
-	pthread_t tidAo = -1;
-	// AO. 参数为本地音频文件的路径。写死的，16位宽 16000采样率
-	ret = pthread_create(&tidAo, NULL, routeAo, (void *)"pcm_16000_16bit.pcm");
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3) for AO, " << strerror(errno) << endl;
-	}
-	#endif
-
-	#if(1 == (USE_OSD))
-	// OSD 功能
-	pthread_t tidOsd = -1;
-	ret = pthread_create(&tidOsd, NULL, routeOsd, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3) for OSD, " << strerror(errno) << endl;
-	}
-	#endif
-
-	#if (1 == (USE_VENC))
-	pthread_t tidVideo = -1;
-	cout << "routeVideo" << endl;
-	// 测试出图的线程。参数为VENC 的通道号，支持主码流和子码流。
-	ret = pthread_create(&tidVideo, NULL, routeVideo, (void *)Venc::vencMainChn);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3) for VENC, " << strerror(errno) << endl;
-	}
-	cout << "routeVideo" << endl;
-	#endif
-
-	//testQueue();
-
-	g_bRunning = true;		// sigHandler() 对其取反。
-	while(g_bRunning)
-	{
-		sleep(1);
-	}
-
-	#if (1 == (USE_AI))
-	pthread_join(tidAi, NULL);
-	#endif
-	
-	#if (1 == (USE_AO))
-	pthread_join(tidAo, NULL);
-	#endif
-	
-	#if (1 == (USE_VENC))
-	pthread_join(tidVideo, NULL);
-	#endif
-
-	#if (1 == (USE_OSD))
-	pthread_join(tidOsd, NULL);
-	#endif
-
-	#if (1 == (TEST_RTSPSERVER_LIVESTREAM))
-	pLive555Rtsp->destroyLiveStreamServer();
-	#endif
-
-	#if (1 == (TEST_RTSPSERVER_LOCALFILE))
-	pthread_join(tidRtsp, NULL);
-	#endif
-
-	cout << "Sleep()" << endl;
-	sleep(0.5);
-#endif
-
 	int ret = 0;
 	ret = SPI_Open();
 	cout << "call spi_open(). ret = " << ret <<endl;
 
-	ret = SPI_LookBackTest();
-	cout << "call SPI_LookBackTest(). ret = " << ret <<endl;
+	//ret = SPI_LookBackTest();
+	//cout << "call SPI_LookBackTest(). ret = " << ret <<endl;
+	//sleep(10);
+	cout << "reset" << endl;
+	spiPanelReset();
+
+	//sleep(100);
+	
+	const unsigned int BUFLEN = 128;
+	unsigned char dataBuf[BUFLEN];
+ 
+	cout << "write cmd" << endl;
+	dataBuf[0] = 0x11;
+	spiPanelWriteCmd(dataBuf, 1); //Sleep out 
+	usleep(120 * 1000);              //Delay 120ms 
+	//************* Start Initial Sequence **********// 
+	dataBuf[0] = 0x36;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x00;
+	//sleep(5);
+	cout << "Write Data" << endl;
+	spiPanelWriteData(dataBuf, 1);
+	//sleep(5);
+	cout << "Write Over" << endl;
+	//spiPanelWriteData(0xC0);
+	//spiPanelWriteData(0x70);
+	//spiPanelWriteData(0xA0);
+
+	dataBuf[0] = 0x3A;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x05;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xB2;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x0C;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x0C;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x00;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x33;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x33;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xB7;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x35;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xBB;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x37;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xC0;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x2C;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xC2;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x01;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xC3;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x12;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xC4;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x20;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xC6;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0x0F;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xD0;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0xA4;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0xA1;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xE0;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0xD0;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x04;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x0D;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x11;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x13;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x2B;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x3F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x54;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x4C;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x18;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x0D;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x0B;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x1F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x23;
+	spiPanelWriteData(dataBuf, 1);
+
+	dataBuf[0] = 0xE1;
+	spiPanelWriteCmd(dataBuf, 1);
+	dataBuf[0] = 0xD0;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x04;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x0C;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x11;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x13;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x2C;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x3F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x44;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x51;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x2F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x1F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x1F;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x20;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x23;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x21;
+	spiPanelWriteCmd(dataBuf, 1);
+
+	dataBuf[0] = 0x29;
+	spiPanelWriteCmd(dataBuf, 1);
+
+	//==============SET XY============
+	dataBuf[0] = 0x2a;
+	spiPanelWriteCmd(dataBuf, 1);//列地址设置
+	dataBuf[0] = 10;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 10;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x2b;
+	spiPanelWriteCmd(dataBuf, 1);//行地址设置
+	dataBuf[0] = 10;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 10;
+	spiPanelWriteData(dataBuf, 1);
+	dataBuf[0] = 0x2c;
+	spiPanelWriteCmd(dataBuf, 1);//储存器写
+
+	//==============SET COLOR============
+	int i = 0;
+	int j = 0;
+	
+	for(i=0;i<10;i++)
+	{													   	 	
+		for(j=0;j<10;j++)
+		{
+			dataBuf[0] = 0xFF;
+			dataBuf[1] = 0xFF;
+			spiPanelWriteData(dataBuf, 2);
+		}
+	}
 
 	ret = SPI_Close();
-	cout << "call SPI_Close(). ret = " << ret <<endl;	
-	
+	cout << "call SPI_Close(). ret = " << ret <<endl;
+#endif
+
 	return 0;
 }
 
