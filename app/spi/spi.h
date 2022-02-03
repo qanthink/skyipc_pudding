@@ -17,7 +17,7 @@ sigma star版权所有。
 
 #include "unistd.h"
 
-#define WHITE         	 0xFFFF
+#define WHITE         	 0x0000
 
 #define LCD_W 240
 #define LCD_H 240
@@ -33,6 +33,9 @@ sigma star版权所有。
 #define GPIO_BLK 108
 
 #define USE_HORIZONTAL 0
+
+#define SPI_DEBUG 1
+
 
 extern int fd_SCLK;
 extern int fd_MOSI;
@@ -71,7 +74,7 @@ public:
 	void LCD_Writ_Bus(u8 dat);
 	void LCD_Address_Set(u16 x1,u16 y1,u16 x2,u16 y2);//设置坐标函数
 
-	void GPIO_INIT();	
+	void GPIO_INIT();
 
 private:
 	Spi();

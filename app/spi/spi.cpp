@@ -13,6 +13,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "string.h"
+#include "spidev.h"
+#include "sys/ioctl.h"
 
 using namespace std;
 
@@ -66,6 +68,287 @@ int Spi::disable()
 	
 	cout << "Call Spi::disable() end." << endl;
 	return 0;
+}
+
+static const char *device = "/dev/spidev1.0"; //根据使用哪一组spi确认节点
+//static uint8_t mode = 0; /* SPI通信使用全双工，设置CPOL＝0，CPHA＝0。 */
+static uint8_t mode = 2; /* 本程序用到的SPI屏，设置CPOL＝1，CPHA＝?, 所以mode = 2或3 */
+static uint8_t bits = 8; /* ８ｂiｔｓ读写，MSB first。*/
+static uint32_t speed = 60*1000 * 60;/* 设置传输速度 */
+static uint16_t delay = 0;
+static int g_SPI_Fd = 0;
+
+static void pabort(const char *s)
+{
+    perror(s);
+    abort();
+}
+
+
+/**
+* 功 能：同步数据传输
+* 入口参数 ：
+* TxBuf -> 发送数据首地址
+* len -> 交换数据的长度
+* 出口参数：
+* RxBuf -> 接收数据缓冲区
+* 返回值：0 成功
+* 开发人员：Lzy 2013－5－22
+*/
+int SPI_Transfer(const uint8_t *TxBuf, uint8_t *RxBuf, int len)
+{
+    int ret;
+    int fd = g_SPI_Fd;
+
+	//cout << "fd = " << g_SPI_Fd << endl;
+
+
+    struct spi_ioc_transfer tr ={
+        .tx_buf = (unsigned long) TxBuf,
+        .rx_buf = (unsigned long) RxBuf,
+        .len =len,
+        .delay_usecs = delay,
+    };
+
+
+    ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+    if (ret < 1)
+        perror("can't send spi message\n");
+    else
+    {
+#if SPI_DEBUG
+        int i;
+        //printf("nsend spi message Succeed\n");
+        //printf("nSPI Send [Len:%d]: \n", len);
+        for (i = 0; i < len; i++)
+        {
+            if (i % 8 == 0)
+          //      printf("nt\n");
+            //printf("0x%02X \n", TxBuf[i]);
+            ;
+        }
+        //printf("n");
+
+
+		#if 0
+        printf("SPI Receive [len:%d]:\n", len);
+        for (i = 0; i < len; i++)
+        {
+            if (i % 8 == 0)
+                printf("nt\n");
+            printf("0x%02X \n", RxBuf[i]);
+        }
+		#endif
+        //printf("\n");
+#endif
+    }
+    return ret;
+}
+
+
+/**
+* 功 能：发送数据
+* 入口参数 ：
+* TxBuf -> 发送数据首地址
+＊len -> 发送与长度
+＊返回值：0 成功
+* 开发人员：Lzy 2013－5－22
+*/
+int SPI_Write(uint8_t *TxBuf, int len)
+{
+    int ret;
+    int fd = g_SPI_Fd;
+
+
+    ret = write(fd, TxBuf, len);
+    if (ret < 0)
+        perror("SPI Write error\n");
+    else
+    {
+#if SPI_DEBUG
+        int i;
+        printf("SPI Write [Len:%d]: \n", len);
+        for (i = 0; i < len; i++)
+        {
+            if (i % 8 == 0)
+                printf("\n\t");
+            printf("0x%02X \n", TxBuf[i]);
+        }
+        printf("\n");
+#endif
+    }
+
+    return ret;
+}
+
+
+/**
+* 功 能：接收数据
+* 出口参数：
+* RxBuf -> 接收数据缓冲区
+* rtn -> 接收到的长度
+* 返回值：>=0 成功
+* 开发人员：Lzy 2013－5－22
+*/
+int SPI_Read(uint8_t *RxBuf, int len)
+{
+    int ret;
+    int fd = g_SPI_Fd;
+    ret = read(fd, RxBuf, len);
+    if (ret < 0)
+        printf("SPI Read error\n");
+    else
+    {
+#if SPI_DEBUG
+        int i;
+        printf("SPI Read [len:%d]:\n", len);
+        for (i = 0; i < len; i++)
+        {
+            if (i % 8 == 0)
+                printf("\n\t");
+            printf("0x%02X \n", RxBuf[i]);
+        }
+        printf("\n");
+#endif
+    }
+    return ret;
+}
+
+
+/**
+* 功 能：打开设备 并初始化设备
+* 入口参数 ：
+* 出口参数：
+* 返回值：0 表示已打开 0XF1 表示SPI已打开 其它出错
+* 开发人员：Lzy 2013－5－22
+*/
+static int SPI_Open(void)
+{
+    int fd;
+    int ret = 0;
+
+
+    if (g_SPI_Fd != 0) /* 设备已打开 */
+        return 0xF1;
+
+    fd = open(device, O_RDWR);
+    if (fd < 0)
+        pabort("can't open device\n");
+    else
+        printf("SPI - Open Succeed. Start Init SPI...\n");
+
+
+    g_SPI_Fd = fd;
+	cout << "g_SPI_Fd = " << g_SPI_Fd << endl;
+	sleep(0.5);
+    /*
+    * spi mode
+    */
+    ret = ioctl(fd, SPI_IOC_WR_MODE, &mode);
+    if (ret == -1)
+        pabort("can't set spi mode\n");
+
+
+    ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
+    if (ret == -1)
+        pabort("can't get spi mode\n");
+
+
+    /*
+    * bits per word
+    */
+    ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
+    if (ret == -1)
+        pabort("can't set bits per word\n");
+
+
+    ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
+    if (ret == -1)
+        pabort("can't get bits per word\n");
+
+
+    /*
+    * max speed hz
+    */
+    ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
+    if (ret == -1)
+        pabort("can't set max speed hz\n");
+
+
+    ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
+    if (ret == -1)
+        pabort("can't get max speed hz\n");
+
+
+    printf("spi mode: %d\n", mode);
+    printf("bits per word: %d\n", bits);
+    printf("max speed: %d KHz (%d MHz)\n", speed / 1000, speed / 1000 / 1000);
+
+
+    return ret;
+}
+
+
+/**
+* 功 能：关闭SPI模块
+*/
+int SPI_Close(void)
+{
+    int fd = g_SPI_Fd;
+
+
+    if (fd == 0) /* SPI是否已经打开*/
+        return 0;
+    close(fd);
+    g_SPI_Fd = 0;
+
+
+    return 0;
+}
+
+/**
+* 功 能：自发自收测试程序
+* 接收到的数据与发送的数据如果不一样 ，则失败
+* 说明：
+* 在硬件上需要把输入与输出引脚短跑
+* 开发人员：Lzy 2013－5－22
+*/
+int SPI_LookBackTest(void)
+{
+    int ret, i;
+    const int BufSize = 16;
+    uint8_t tx[BufSize], rx[BufSize];
+
+    bzero(rx, sizeof(rx));
+    for (i = 0; i < BufSize; i++)
+        tx[i] = i;
+
+    printf("nSPI - LookBack Mode Test...\n");
+    ret = SPI_Transfer(tx, rx, BufSize);
+    if (ret > 1)
+    {
+        ret = memcmp(tx, rx, BufSize);
+        if (ret != 0)
+        {
+            printf("tx:\n");
+            for (i = 0; i < BufSize; i++)
+            {
+                printf("%d ", tx[i]);
+            }
+            printf("\n");
+            printf("rx:\n");
+            for (i = 0; i < BufSize; i++)
+            {
+                printf("%d ", rx[i]);
+            }
+            printf("\n");
+            perror("LookBack Mode Test error\n");
+        }
+        else
+            printf("SPI - LookBack Mode OK\n");
+    }
+
+    return ret;
 }
 
 /******************************************************************************
@@ -154,6 +437,10 @@ void Spi::LCD_Address_Set(u16 x1,u16 y1,u16 x2,u16 y2)
 }
 
 
+static unsigned char rxBuf[128];
+//static unsigned char *rxBuf = NULL;
+static unsigned char txBuf[128];
+
 /******************************************************************************
       函数说明：LCD串行数据写入函数
       入口数据：dat  要写入的串行数据
@@ -161,6 +448,7 @@ void Spi::LCD_Address_Set(u16 x1,u16 y1,u16 x2,u16 y2)
 ******************************************************************************/
 void Spi::LCD_Writ_Bus(u8 dat)
 {	
+	#if 0
 	u8 i;
 	for(i=0;i<8;i++)
 	{			  
@@ -175,7 +463,16 @@ void Spi::LCD_Writ_Bus(u8 dat)
 		}
 		LCD_SCLK_Set();
 		dat<<=1;
-	}	
+	}
+	#else
+	int ret = 0;
+	//ret = SPI_Write(&dat, 1);
+	//cout << "ret = " << ret << endl;
+
+	txBuf[0] = dat;
+	//SPI_Transfer(txBuf, rxBuf, 1);		// test ok
+	SPI_Transfer(txBuf, rxBuf, 1);
+	#endif
 }
 
 
@@ -186,17 +483,28 @@ void Spi::LCD_Writ_Bus(u8 dat)
 ******************************************************************************/
 void Spi::LCD_Init(void)
 {
-	cout << "000000000000000000000000000000000" << endl;
 	LCD_RES_Clr();
-	delay_ms(100);
-	cout << "11111111111111111" << endl;
 	LCD_RES_Set();
-	delay_ms(100);
-	cout << "22222222222222222222" << endl;
+	
+	LCD_BLK_Clr();
 	LCD_BLK_Set();
-	delay_ms(100);
+
+	LCD_DC_Clr();
+	LCD_DC_Set();
+
+	LCD_SCLK_Clr();
+	LCD_SCLK_Set();
+
+	LCD_MOSI_Clr();
+	LCD_MOSI_Set();
+
+	sleep(1);
+	cout << "look back test." << endl;
+	SPI_LookBackTest();
+	cout << "look back test." << endl;
+	sleep(1);
+	
 	//************* Start Initial Sequence **********//
-	cout << "333333333333333333333333" << endl;
 	LCD_WR_REG(0x11); //Sleep out 
 	delay_ms(120);              //Delay 120ms 
 	//************* Start Initial Sequence **********// 
@@ -292,7 +600,9 @@ void Spi::LCD_Init(void)
 void Spi::LCD_Fill(u16 xsta,u16 ysta,u16 xend,u16 yend,u16 color)
 {          
 	u16 i,j; 
+	cout << "999999999999999" << endl;
 	LCD_Address_Set(xsta,ysta,xend-1,yend-1);//设置显示范围
+	cout << "aaaaaaaaaaaaaaa" << endl;
 	for(i=ysta;i<yend;i++)
 	{
 		cout << "i  = " << i << endl;
@@ -314,33 +624,18 @@ static void setGpioValue(int port, const char *direction, int value);
 
 void Spi::GPIO_INIT()
 {
-	unsigned int port = GPIO_BLK;
+	unsigned int port = 0;
 	const char *direction = "out";
 	char cmd[100] = {0};
-	
+
+	port = GPIO_BLK;
 	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
-	//cout << cmd << endl;
 	system(cmd);
-
 	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
-	//cout << cmd << endl;
 	system(cmd);
-
 	sprintf(cmd, "/sys/class/gpio/gpio%d/value", port);
 	fd_BLK = open(cmd, O_RDWR);
 	if(-1 == fd_BLK)
-	{
-		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
-	}
-
-	port = GPIO_MOSI;
-	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
-	system(cmd);
-	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
-	system(cmd);
-	sprintf(cmd, "/sys/class/gpio/gpio%d/value", port);
-	fd_MOSI = open(cmd, O_RDWR);
-	if(-1 == fd_MOSI)
 	{
 		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
 	}
@@ -357,18 +652,6 @@ void Spi::GPIO_INIT()
 		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
 	}
 
-	port = GPIO_SCLK;
-	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
-	system(cmd);
-	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
-	system(cmd);
-	sprintf(cmd, "/sys/class/gpio/gpio%d/value", port);
-	fd_SCLK = open(cmd, O_RDWR);
-	if(-1 == fd_SCLK)
-	{
-		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
-	}
-
 	port = GPIO_DC;
 	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
 	system(cmd);
@@ -380,20 +663,33 @@ void Spi::GPIO_INIT()
 	{
 		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
 	}
+	
+	port = GPIO_SCLK;
+	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
+	system(cmd);
+	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
+	system(cmd);
+	sprintf(cmd, "/sys/class/gpio/gpio%d/value", port);
+	fd_SCLK = open(cmd, O_RDWR);
+	if(-1 == fd_SCLK)
+	{
+		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
+	}
+	
+	port = GPIO_MOSI;
+	sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
+	system(cmd);
+	sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
+	system(cmd);
+	sprintf(cmd, "/sys/class/gpio/gpio%d/value", port);
+	fd_MOSI = open(cmd, O_RDWR);
+	if(-1 == fd_MOSI)
+	{
+		cerr << "Fail to call open(3) in GPIO_INIT(). errno = " << errno << endl;
+	}
 
+	#if 0		// test GPIO
 	//sleep(5);
-	//cout << "begin scl" << endl;
-	setGpioValue(GPIO_SCLK, NULL, 0);
-	//sleep(5);
-	setGpioValue(GPIO_SCLK, NULL, 1);
-	//sleep(5);
-
-	//cout << "begin sda" << endl;
-	setGpioValue(GPIO_MOSI, NULL, 0);
-	//sleep(5);
-	setGpioValue(GPIO_MOSI, NULL, 1);
-	//sleep(5);
-
 	//cout << "begin res" << endl;
 	setGpioValue(GPIO_RES, NULL, 0);
 	//sleep(5);
@@ -411,22 +707,36 @@ void Spi::GPIO_INIT()
 	//sleep(5);
 	setGpioValue(GPIO_BLK, NULL, 1);
 	//sleep(5);
+
+	//cout << "begin scl" << endl;
+	setGpioValue(GPIO_SCLK, NULL, 0);
+	//sleep(5);
+	setGpioValue(GPIO_SCLK, NULL, 1);
+	//sleep(5);
+
+	//cout << "begin sda" << endl;
+	setGpioValue(GPIO_MOSI, NULL, 0);
+	//sleep(5);
+	setGpioValue(GPIO_MOSI, NULL, 1);
+	//sleep(5);
+	#endif
 }
 
 static void setGpioValue(int port, const char *direction, int value)
 {
 	char cmd[100] = {0};
-	//sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
-	//cout << cmd << endl;
-	//system(cmd);
 
-	//sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
-	//cout << cmd << endl;
+	#if 0
+	//sprintf(cmd, "echo %d > /sys/class/gpio/export", port);
 	//system(cmd);
+	//sprintf(cmd, "echo %s > /sys/class/gpio/gpio%d/direction", direction, port);
+	//system(cmd);
+	#endif
 
 	#if 0
 	sprintf(cmd, "echo %d > /sys/class/gpio/gpio%d/value", value, port);
-	//cout << cmd << endl;
+	system(cmd);
+	sprintf(cmd, "echo %d > /sys/class/gpio/unexport", port);
 	system(cmd);
 	#else
 
@@ -474,10 +784,6 @@ static void setGpioValue(int port, const char *direction, int value)
 	}
 
 	#endif
-
-	//sprintf(cmd, "echo %d > /sys/class/gpio/unexport", port);
-	//cout << cmd << endl;
-	//system(cmd);
 }
 
 //#define LCD_RES_Clr() LCD_RES=0//RES
@@ -541,7 +847,6 @@ void Spi::LCD_MOSI_Set()
 	setGpioValue(GPIO_MOSI, "out", 1);
 }
 
-
 /*-----------------------------------------------------------------------------
 描--述：
 参--数：
@@ -554,9 +859,25 @@ int Spi::fun()
 
 	u8 i,j;
 	float t=0;
+	SPI_Open();
+	//SPI_LookBackTest();
+	//sleep(15);
+	
 	LCD_Init();//LCD初始化
 	//sleep(5);
-	LCD_Fill(0,0,LCD_W,LCD_H,WHITE);
+
+	srand((unsigned)time(NULL));
+	int color = rand() % 0xFFFF;
+	cout << "rand() % 0xFFFF = " << color << endl;
+	cout << "rand() % 0xFFFF = " << color << endl;
+	cout << "rand() % 0xFFFF = " << color << endl;
+	sleep(1);
+	
+	//LCD_Fill(0,0,LCD_W,LCD_H,WHITE);
+	LCD_Fill(0,0,LCD_W,LCD_H,color);
+	cout << "Call LCD_Fill() end." << endl;
+	return 0;
+	
 	while(1)
 	{
 		//LCD_ShowChinese(0,0,"中景园电子",RED,WHITE,32,0);
