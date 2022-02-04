@@ -139,7 +139,7 @@ int SpiPanel::spiDevClose()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::spiDevRead(unsigned char *dataBuf, unsigned int dataBufLen)
+int SpiPanel::spiDevRead(void *dataBuf, unsigned long dataBufLen)
 {
 	cout << "Call SpiPanel::spiDevRead()." << endl;
 
@@ -175,7 +175,7 @@ int SpiPanel::spiDevRead(unsigned char *dataBuf, unsigned int dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::spiDevWrite(unsigned char *dataBuf, unsigned int dataBufLen)
+int SpiPanel::spiDevWrite(void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::spiDevWrite()." << endl;
 
@@ -185,7 +185,23 @@ int SpiPanel::spiDevWrite(unsigned char *dataBuf, unsigned int dataBufLen)
 		return -1;
 	}
 
-	
+	#if 0
+	if(1 == dataBufLen)
+	{
+		unsigned char data = 0;
+		data = *((unsigned char *)dataBuf);
+		cout << "data1 = " << hex << (unsigned)data << endl;
+	}
+	else if(2 == dataBufLen)
+	{
+		unsigned char data0 = 0;
+		unsigned char data1 = 0;
+		data0 = *((unsigned char *)dataBuf);
+		data1 = ((*((unsigned int *)dataBuf)) >> 8);
+		cout << "data2 = " << hex << (unsigned)data0 << ", " << (unsigned)data1 << endl;
+	}
+	#endif
+
 	struct spi_ioc_transfer stSpiTr ={
 		.tx_buf = (unsigned)dataBuf,
 		.rx_buf = (unsigned)NULL,
@@ -301,6 +317,7 @@ int SpiPanel::gpioDeinit()
 	system(gpioCMD);
 
 	cout << "Call SpiPanel::gpioDeinit() end." << endl;
+	return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -309,7 +326,7 @@ int SpiPanel::gpioDeinit()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::gpioSetVal(unsigned gpioIndex, unsigned val)
+int SpiPanel::gpioSetVal(unsigned int gpioIndex, unsigned int val)
 {
 	//cout << "Call SpiPanel::gpioSetVal()." << endl;
 
@@ -362,59 +379,55 @@ int SpiPanel::PanelInit()
 {
 	cout << "Call SpiPanel::PanelInit()." << endl;
 
-	//LCD_RES_Clr();
 	gpioSetVal(PANEL_GPIO_RES, 0);
 	usleep(100 * 1000);	// n * 1000 = n ms
-	
-	//LCD_RES_Set();
 	gpioSetVal(PANEL_GPIO_RES, 1);
 	usleep(100 * 1000);	// n * 1000 = n ms
 
-	//LCD_BLK_Set();
+	gpioSetVal(PANEL_GPIO_BLK, 0);
+	usleep(100 * 1000);	// n * 1000 = n ms
 	gpioSetVal(PANEL_GPIO_BLK, 1);
 	usleep(100 * 1000);	// n * 1000 = n ms
+
+	gpioSetVal(PANEL_GPIO_DC, 0);
+	usleep(100 * 1000);	// n * 1000 = n ms
+	gpioSetVal(PANEL_GPIO_DC, 1);
+	usleep(100 * 1000);	// n * 1000 = n ms
 	
-	//************* Start Initial Sequence **********//
-	//LCD_WR_REG(0x11); //Sleep out 
-	unsigned char data[128] = {0x11};
+	//************* Start Initial Sequence **********//	
+	unsigned char data[1] = {0x11};
 	PanelWriteCmd(data, 1);
 	usleep(120 * 1000);	// n * 1000 = n ms	//Delay 120ms 
 	
 	//************* Start Initial Sequence **********// 
-	//LCD_WR_REG(0x36);
 	data[0] = 0x36;
 	PanelWriteCmd(data, 1);
 
 	switch(USE_HORIZONTAL)
 	{
 		case 0:
-			//LCD_WR_DATA8(0x00);
 			data[0] = 0x00;
 			PanelWriteData(data, 1);
 			break;
 		case 1:
-			//LCD_WR_DATA8(0xC0);
 			data[0] = 0xC0;
 			PanelWriteData(data, 1);
 			break;
 		case 2:
-			//LCD_WR_DATA8(0x70);
 			data[0] = 0x70;
 			PanelWriteData(data, 1);
 			break;
 		case 3:
-			//LCD_WR_DATA8(0xA0);
 			data[0] = 0xA0;
 			PanelWriteData(data, 1);
 			break;
 		default:
 			cerr << "In Lcd_Init(), out of range." << endl;
-			//LCD_WR_DATA8(0x00);
 			data[0] = 0x00;
 			PanelWriteData(data, 1);
 			break;
 	}
-#if 1
+	
 	data[0] = 0x3A;
 	PanelWriteCmd(data, 1);
 
@@ -581,11 +594,10 @@ int SpiPanel::PanelInit()
 	PanelWriteData(data, 1);
 
 	data[0] = 0x21;
-	PanelWriteCmd(data, 1); 
+	PanelWriteCmd(data, 1);
 
 	data[0] = 0x29;
-	PanelWriteCmd(data, 1); 
-	#endif
+	PanelWriteCmd(data, 1);
 	
 	cout << "Call SpiPanel::PanelInit() end." << endl;
 	return 0;
@@ -612,7 +624,7 @@ int SpiPanel::PanelDeinit()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteBus(unsigned char *dataBuf, unsigned int dataBufLen)
+int SpiPanel::PanelWriteBus(void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteBus()." << endl;
 
@@ -628,15 +640,15 @@ int SpiPanel::PanelWriteBus(unsigned char *dataBuf, unsigned int dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteCmd(unsigned char *dataBuf, unsigned int dataBufLen)
+int SpiPanel::PanelWriteCmd(void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteCmd()." << endl;
 
-	//LCD_DC_Clr();//写命令
 	gpioSetVal(PANEL_GPIO_DC, 0);
 	PanelWriteBus(dataBuf, dataBufLen);
 	
 	//cout << "Call SpiPanel::PanelWriteCmd() end." << endl;
+	return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -645,14 +657,101 @@ int SpiPanel::PanelWriteCmd(unsigned char *dataBuf, unsigned int dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteData(unsigned char *dataBuf, unsigned int dataBufLen)
+int SpiPanel::PanelWriteData(void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteData()." << endl;
 
-	//LCD_DC_Set();//写数据
 	gpioSetVal(PANEL_GPIO_DC, 1);
 	PanelWriteBus(dataBuf, dataBufLen);
 	
 	//cout << "Call SpiPanel::PanelWriteData() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：设置屏坐标
+参--数：x1, y1, 起始坐标；x2, y2, 终点坐标。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::PanelSetAddress()
+{
+	cout << "Call SpiPanel::PanelSetAddress()." << endl;
+
+	unsigned int x1 = 0;
+	unsigned int y1 = 0;
+	unsigned int x2 = PANEL_WIDTH;
+	unsigned int y2 = PANEL_HEIGHT;
+
+	switch(USE_HORIZONTAL)
+	{
+		case 0:
+			break;
+		case 1:
+			y1 += 80;
+			y2 += 80;
+			break;
+		case 2:
+			break;
+		case 3:
+			x1 += 80;
+			x2 += 80;
+			break;
+		default:
+			cerr << "Call SpiPanel::PanelSetAddress(). Macro 'USE_HORIZONTAL' is out of range." 
+				<< "Use default value 0." << endl;
+			break;
+	}
+
+	unsigned char data = 0x2a;
+	PanelWriteCmd(&data, 1);	// 列地址设置
+	PanelWriteData(&x1, 2);
+	PanelWriteData(&x2, 2);
+	data = 0x2b;
+	PanelWriteCmd(&data, 1);	// 行地址设置
+	PanelWriteData(&y1, 2);
+	PanelWriteData(&y2, 2);
+	data = 0x2c;
+	PanelWriteCmd(&data, 1);	// 储存器写
+	
+	cout << "Call SpiPanel::PanelSetAddress() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：在矩形范围内填充色彩。
+参--数：x0, y0, x1, y1, 起始点和终点坐标；color, 色彩。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelFill(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color)
+{
+	cout << "Call SpiPanel::panelFill()." << endl;
+
+	unsigned short max = 0;
+	max = MAX((PANEL_WIDTH), (PANEL_HEIGHT));
+
+	if(x0 > max || y0 > max || x1 > max || y1 > max)
+	{
+		cerr << "Fail to call SpiPanel::panelFill(). Argument is out of range."
+			<< "x0, y0, x1, y1 = " << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
+		return -1;
+	}
+
+	PanelSetAddress();	//设置显示范围
+	
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned short mycolor = color;
+	for(i= y0; i< y1; ++i)
+	{
+		for(j = x0; j < x1; ++j)
+		{
+			PanelWriteData(&mycolor, 2);
+		}
+		//cout << "i = " << i << endl;
+	}
+	
+	cout << "Call SpiPanel::panelFill() end." << endl;
 }
 

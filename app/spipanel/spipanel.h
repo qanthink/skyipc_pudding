@@ -21,6 +21,10 @@ sigma star版权所有。
 #define PANEL_GPIO_RES 	46	//复位
 
 #define USE_HORIZONTAL 0	// 旋转0-1代表90°，2-3代表180°
+#define PANEL_WIDTH 240
+#define PANEL_HEIGHT 240
+
+#define MAX(x, y) (((x) >= (y)) ? ((x)) : ((y)))
 
 class SpiPanel{
 public:
@@ -28,6 +32,8 @@ public:
 
 	int enable();
 	int disable();
+
+	int panelFill(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);
 
 private:
 	SpiPanel();
@@ -40,8 +46,8 @@ private:
 	const char *spiDevPath = "/dev/spidev1.0";
 	int spiDevOpen();
 	int spiDevClose();
-	int spiDevRead(unsigned char *dataBuf, unsigned int dataBufLen);
-	int spiDevWrite(unsigned char *dataBuf, unsigned int dataBufLen);
+	int spiDevRead(void *dataBuf, unsigned long dataBufLen);
+	int spiDevWrite(void *dataBuf, unsigned long dataBufLen);
 
 	// GPIO Operation
 	int fdGpioValRES = -1;
@@ -49,15 +55,15 @@ private:
 	int fdGpioValBLK = -1;
 	int gpioInit();
 	int gpioDeinit();
-	int gpioSetVal(unsigned gpioIndex, unsigned val);
+	int gpioSetVal(unsigned int gpioIndex, unsigned int val);
 
 	// Panel Operation
 	int PanelInit();
 	int PanelDeinit();
-	int PanelWriteBus(unsigned char *dataBuf, unsigned int dataBufLen);
-	int PanelWriteCmd(unsigned char *dataBuf, unsigned int dataBufLen);
-	int PanelWriteData(unsigned char *dataBuf, unsigned int dataBufLen);
-	int PanelSetAddress(unsigned short x1,unsigned short y1,unsigned short x2,unsigned short y2);
+	int PanelWriteBus(void *dataBuf, unsigned long dataBufLen);
+	int PanelWriteCmd(void *dataBuf, unsigned long dataBufLen);
+	int PanelWriteData(void *dataBuf, unsigned long dataBufLen);
+	int PanelSetAddress();
 
 	bool bEnable;
 };
