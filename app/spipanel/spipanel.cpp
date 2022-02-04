@@ -99,7 +99,53 @@ int SpiPanel::spiDevOpen()
 	if(-1 == fdSpiDev)
 	{
 		cerr << "Fail to call open(2) in SpiPanel::spiDevOpen(), errno = " << errno << ", " << strerror(errno);
+		return -1;
 	}
+
+	int ret = 0;
+	// spi mode
+	ret = ioctl(fdSpiDev, SPI_IOC_WR_MODE, &mode);
+	if(-1 == ret)
+	{
+		cerr << "can't set spi mode\n" << endl;
+	}
+
+	ret = ioctl(fdSpiDev, SPI_IOC_RD_MODE, &mode);
+	if(-1 == ret)
+	{
+		cerr << "can't get spi mode\n" << endl;
+	}
+
+
+	// bits per word
+	ret = ioctl(fdSpiDev, SPI_IOC_WR_BITS_PER_WORD, &bits);
+	if(-1 == ret)
+	{
+		cerr << "can't set bits per word\n" << endl;
+	}
+
+	ret = ioctl(fdSpiDev, SPI_IOC_RD_BITS_PER_WORD, &bits);
+	if(-1 == ret)
+	{
+		cerr << "can't get bits per word\n" << endl;
+	}
+
+	// max speed hz
+	ret = ioctl(fdSpiDev, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
+	if(-1 == ret)
+	{
+		cerr << "can't set max speed hz\n" << endl;
+	}
+
+	ret = ioctl(fdSpiDev, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
+	if(-1 == ret)
+	{
+		cerr << "can't get max speed hz\n" << endl;
+	}
+	
+	printf("spi mode: %d\n", mode);
+	printf("bits per word: %d\n", bits);
+	printf("max speed: %d KHz (%d MHz)\n", speed / 1000, speed / 1000 / 1000);
 	
 	cout << "Call SpiPanel::spiDevOpen() end." << endl;
 	return fdSpiDev;
@@ -150,9 +196,9 @@ int SpiPanel::spiDevRead(void *dataBuf, unsigned long dataBufLen)
 	}
 
 	memset(dataBuf, 0, dataBufLen);
-	struct spi_ioc_transfer stSpiTr ={
-		.tx_buf = (unsigned)NULL,
-		.rx_buf = (unsigned)dataBuf,
+	struct spi_ioc_transfer stSpiTr = {
+		.tx_buf = (unsigned long)NULL,
+		.rx_buf = (unsigned long)dataBuf,
 		.len = dataBufLen,
 		.delay_usecs = 0,
 	};
@@ -175,7 +221,7 @@ int SpiPanel::spiDevRead(void *dataBuf, unsigned long dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::spiDevWrite(void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::spiDevWrite(const void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::spiDevWrite()." << endl;
 
@@ -202,9 +248,10 @@ int SpiPanel::spiDevWrite(void *dataBuf, unsigned long dataBufLen)
 	}
 	#endif
 
-	struct spi_ioc_transfer stSpiTr ={
-		.tx_buf = (unsigned)dataBuf,
-		.rx_buf = (unsigned)NULL,
+	unsigned char rxBuf[128];
+	struct spi_ioc_transfer stSpiTr = {
+		.tx_buf = (unsigned long)dataBuf,
+		.rx_buf = (unsigned long)rxBuf,
 		.len = dataBufLen,
 		.delay_usecs = 0,
 	};
@@ -624,7 +671,7 @@ int SpiPanel::PanelDeinit()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteBus(void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::PanelWriteBus(const void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteBus()." << endl;
 
@@ -640,12 +687,13 @@ int SpiPanel::PanelWriteBus(void *dataBuf, unsigned long dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteCmd(void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::PanelWriteCmd(const void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteCmd()." << endl;
 
 	gpioSetVal(PANEL_GPIO_DC, 0);
 	PanelWriteBus(dataBuf, dataBufLen);
+	gpioSetVal(PANEL_GPIO_DC, 1);
 	
 	//cout << "Call SpiPanel::PanelWriteCmd() end." << endl;
 	return 0;
@@ -657,11 +705,11 @@ int SpiPanel::PanelWriteCmd(void *dataBuf, unsigned long dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteData(void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::PanelWriteData(const void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteData()." << endl;
 
-	gpioSetVal(PANEL_GPIO_DC, 1);
+	//gpioSetVal(PANEL_GPIO_DC, 1);
 	PanelWriteBus(dataBuf, dataBufLen);
 	
 	//cout << "Call SpiPanel::PanelWriteData() end." << endl;
@@ -705,12 +753,25 @@ int SpiPanel::PanelSetAddress()
 
 	unsigned char data = 0x2a;
 	PanelWriteCmd(&data, 1);	// 列地址设置
-	PanelWriteData(&x1, 2);
-	PanelWriteData(&x2, 2);
+	data = x1 >> 8;
+	PanelWriteData(&data, 1);
+	data = x1;
+	PanelWriteData(&data, 1);
+	data = x2 >> 8;
+	PanelWriteData(&data, 2);
+	data = x2;
+	PanelWriteData(&data, 2);
+	
 	data = 0x2b;
 	PanelWriteCmd(&data, 1);	// 行地址设置
-	PanelWriteData(&y1, 2);
-	PanelWriteData(&y2, 2);
+	data = y1 >> 8;
+	PanelWriteData(&data, 1);
+	data = y1;
+	PanelWriteData(&data, 1);
+	data = y2 >> 8;
+	PanelWriteData(&data, 1);
+	data = y2;
+	PanelWriteData(&data, 1);
 	data = 0x2c;
 	PanelWriteCmd(&data, 1);	// 储存器写
 	

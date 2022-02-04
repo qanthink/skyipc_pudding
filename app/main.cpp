@@ -30,7 +30,7 @@ using namespace std;
 int main(int argc, const char *argv[])
 {
 	SpiPanel *pSpiPanel = SpiPanel::getInstance();
-	pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0xAAAA);
+	pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0x0000);
 
 	return 0;
 }

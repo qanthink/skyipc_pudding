@@ -44,10 +44,13 @@ private:
 	// SPI Device Operation. Data transfer
 	int fdSpiDev = -1;
 	const char *spiDevPath = "/dev/spidev1.0";
+	unsigned int mode = 2;	// 本程序用到的SPI屏，设置CPOL＝1，CPHA＝?, 所以mode = 2或3
+	unsigned int bits = 8;	// 8bits读写，MSB first
+	unsigned int speed = 60 * 1000 * 60;	// 设置传输速度
 	int spiDevOpen();
 	int spiDevClose();
 	int spiDevRead(void *dataBuf, unsigned long dataBufLen);
-	int spiDevWrite(void *dataBuf, unsigned long dataBufLen);
+	int spiDevWrite(const void *dataBuf, unsigned long dataBufLen);
 
 	// GPIO Operation
 	int fdGpioValRES = -1;
@@ -60,9 +63,9 @@ private:
 	// Panel Operation
 	int PanelInit();
 	int PanelDeinit();
-	int PanelWriteBus(void *dataBuf, unsigned long dataBufLen);
-	int PanelWriteCmd(void *dataBuf, unsigned long dataBufLen);
-	int PanelWriteData(void *dataBuf, unsigned long dataBufLen);
+	int PanelWriteBus(const void *dataBuf, unsigned long dataBufLen);
+	int PanelWriteCmd(const void *dataBuf, unsigned long dataBufLen);
+	int PanelWriteData(const void *dataBuf, unsigned long dataBufLen);
 	int PanelSetAddress();
 
 	bool bEnable;
