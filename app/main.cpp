@@ -23,17 +23,14 @@ sigma star版权所有。
 #include "live555rtsp.h"
 #include "ffmpeg.h"
 #include "queue.h"
-
-#include "spi.h"
-//#include <linux/gpio.h>
+#include "spipanel.h"
 
 using namespace std;
 
 int main(int argc, const char *argv[])
 {
-	Spi *spi = Spi::getInstance();
-	spi->GPIO_INIT();
-	spi->fun();
+	SpiPanel *pSpiPanel = SpiPanel::getInstance();
+	//pSpiPanel->PanelInit();
 
 	return 0;
 }
