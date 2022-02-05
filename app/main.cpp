@@ -30,7 +30,16 @@ using namespace std;
 int main(int argc, const char *argv[])
 {
 	SpiPanel *pSpiPanel = SpiPanel::getInstance();
-	pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0x0000);
+	
+	int color = 0;
+	srand((unsigned)time(NULL));
+	color = rand();
+	pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0x00);
+	pSpiPanel->panelDrawPoint(10, 10, 0xFFFF);
+	pSpiPanel->panelDrawPoint(20, 20, 0xFFFF);
+	pSpiPanel->panelDrawLine(30, 30, 50, 50, 0xFFFF);
+	pSpiPanel->panelDrawRectangle(60, 60, 80, 70, 0xFFFF);
+	pSpiPanel->panelDrawCircle(100, 100, 20, 0xFFFF);
 
 	return 0;
 }

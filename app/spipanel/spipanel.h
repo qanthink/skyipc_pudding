@@ -33,7 +33,11 @@ public:
 	int enable();
 	int disable();
 
-	int panelFill(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);
+	int panelFill(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);	//在指定区域填充颜色
+	int panelDrawPoint(unsigned short x, unsigned short y, unsigned short color);	//在指定位置画一个点
+	int panelDrawLine(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);	//在指定位置画一条线
+	int panelDrawRectangle(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);//在指定位置画一个矩形
+	int panelDrawCircle(unsigned short x, unsigned short y, unsigned char r, unsigned short color);	//在指定位置画一个圆
 
 private:
 	SpiPanel();
@@ -44,9 +48,9 @@ private:
 	// SPI Device Operation. Data transfer
 	int fdSpiDev = -1;
 	const char *spiDevPath = "/dev/spidev1.0";
-	unsigned int mode = 2;	// 本程序用到的SPI屏，设置CPOL＝1，CPHA＝?, 所以mode = 2或3
+	unsigned int mode = 2;	// 本程序用到的SPI屏，设置CPOL=1，CPHA=?, 所以mode = 2或3
 	unsigned int bits = 8;	// 8bits读写，MSB first
-	unsigned int speed = 60 * 1000 * 60;	// 设置传输速度
+	unsigned int speed = 2 * 1000 * 1000;	// 设置传输速度，N * 1000 * 1000 = N MHz
 	int spiDevOpen();
 	int spiDevClose();
 	int spiDevRead(void *dataBuf, unsigned long dataBufLen);
@@ -61,12 +65,12 @@ private:
 	int gpioSetVal(unsigned int gpioIndex, unsigned int val);
 
 	// Panel Operation
-	int PanelInit();
-	int PanelDeinit();
-	int PanelWriteBus(const void *dataBuf, unsigned long dataBufLen);
-	int PanelWriteCmd(const void *dataBuf, unsigned long dataBufLen);
-	int PanelWriteData(const void *dataBuf, unsigned long dataBufLen);
-	int PanelSetAddress();
+	int panelInit();
+	int panelDeinit();
+	int panelWriteBus(const void *dataBuf, unsigned long dataBufLen);
+	int panelWriteCmd(const void *dataBuf, unsigned long dataBufLen);
+	int panelWriteData(const void *dataBuf, unsigned long dataBufLen);
+	int panelSetAddress(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1);
 
 	bool bEnable;
 };

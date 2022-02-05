@@ -53,7 +53,7 @@ int SpiPanel::enable()
 
 	spiDevOpen();
 	gpioInit();
-	PanelInit();
+	panelInit();
 
 	bEnable = true;
 	cout << "Call SpiPanel::enable() end." << endl;
@@ -71,7 +71,7 @@ int SpiPanel::disable()
 	cout << "Call SpiPanel::disable()." << endl;
 
 	bEnable = false;
-	PanelDeinit();
+	panelDeinit();
 	gpioDeinit();
 	spiDevClose();
 	
@@ -231,27 +231,10 @@ int SpiPanel::spiDevWrite(const void *dataBuf, unsigned long dataBufLen)
 		return -1;
 	}
 
-	#if 0
-	if(1 == dataBufLen)
-	{
-		unsigned char data = 0;
-		data = *((unsigned char *)dataBuf);
-		cout << "data1 = " << hex << (unsigned)data << endl;
-	}
-	else if(2 == dataBufLen)
-	{
-		unsigned char data0 = 0;
-		unsigned char data1 = 0;
-		data0 = *((unsigned char *)dataBuf);
-		data1 = ((*((unsigned int *)dataBuf)) >> 8);
-		cout << "data2 = " << hex << (unsigned)data0 << ", " << (unsigned)data1 << endl;
-	}
-	#endif
-
 	unsigned char rxBuf[128];
 	struct spi_ioc_transfer stSpiTr = {
 		.tx_buf = (unsigned long)dataBuf,
-		.rx_buf = (unsigned long)rxBuf,
+		.rx_buf = (unsigned long)NULL,
 		.len = dataBufLen,
 		.delay_usecs = 0,
 	};
@@ -422,229 +405,178 @@ int SpiPanel::gpioSetVal(unsigned int gpioIndex, unsigned int val)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelInit()
+int SpiPanel::panelInit()
 {
 	cout << "Call SpiPanel::PanelInit()." << endl;
 
 	gpioSetVal(PANEL_GPIO_RES, 0);
-	usleep(100 * 1000);	// n * 1000 = n ms
+	usleep(100 * 1000);		// n * 1000 = n ms.
 	gpioSetVal(PANEL_GPIO_RES, 1);
-	usleep(100 * 1000);	// n * 1000 = n ms
+	usleep(100 * 1000);		// n * 1000 = n ms.
 
 	gpioSetVal(PANEL_GPIO_BLK, 0);
-	usleep(100 * 1000);	// n * 1000 = n ms
 	gpioSetVal(PANEL_GPIO_BLK, 1);
-	usleep(100 * 1000);	// n * 1000 = n ms
 
 	gpioSetVal(PANEL_GPIO_DC, 0);
-	usleep(100 * 1000);	// n * 1000 = n ms
 	gpioSetVal(PANEL_GPIO_DC, 1);
-	usleep(100 * 1000);	// n * 1000 = n ms
 	
 	//************* Start Initial Sequence **********//	
-	unsigned char data[1] = {0x11};
-	PanelWriteCmd(data, 1);
-	usleep(120 * 1000);	// n * 1000 = n ms	//Delay 120ms 
+	unsigned char data = 0;
+	data = 0x11;
+	panelWriteCmd(&data, 1);
+	usleep(120 * 1000);		// n * 1000 = n ms.
 	
-	//************* Start Initial Sequence **********// 
-	data[0] = 0x36;
-	PanelWriteCmd(data, 1);
+	data = 0x36;
+	panelWriteCmd(&data, 1);
 
 	switch(USE_HORIZONTAL)
 	{
 		case 0:
-			data[0] = 0x00;
-			PanelWriteData(data, 1);
+			data = 0x00;
 			break;
 		case 1:
-			data[0] = 0xC0;
-			PanelWriteData(data, 1);
+			data = 0xC0;
 			break;
 		case 2:
-			data[0] = 0x70;
-			PanelWriteData(data, 1);
+			data = 0x70;
 			break;
 		case 3:
-			data[0] = 0xA0;
-			PanelWriteData(data, 1);
+			data = 0xA0;
 			break;
 		default:
 			cerr << "In Lcd_Init(), out of range." << endl;
-			data[0] = 0x00;
-			PanelWriteData(data, 1);
+			data = 0x00;
 			break;
 	}
+	panelWriteData(&data, 1);
 	
-	data[0] = 0x3A;
-	PanelWriteCmd(data, 1);
+	data = 0x3A;
+	panelWriteCmd(&data, 1);
+	data = 0x05;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x05;
-	PanelWriteData(data, 1);
+	data = 0xB2;
+	panelWriteCmd(&data, 1);
+	data = 0x0C;
+	panelWriteData(&data, 1);
+	data = 0x0C;
+	panelWriteData(&data, 1);
+	data = 0x00;
+	panelWriteData(&data, 1);
+	data = 0x33;
+	panelWriteData(&data, 1);
+	data = 0x33;
+	panelWriteData(&data, 1);
 
-	data[0] = 0xB2;
-	PanelWriteCmd(data, 1);
-	
-	data[0] = 0x0C;
-	PanelWriteData(data, 1);
+	data = 0xB7;
+	panelWriteCmd(&data, 1);
+	data = 0x35;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x0C;
-	PanelWriteData(data, 1);
+	data = 0xBB;
+	panelWriteCmd(&data, 1);
+	//data = 0x37;
+	data = 0x19;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x00;
-	PanelWriteData(data, 1);
+	data = 0xC0;
+	panelWriteCmd(&data, 1);
+	data = 0x2C;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x33;
-	PanelWriteData(data, 1);
+	data = 0xC2;
+	panelWriteCmd(&data, 1);
+	data = 0x01;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x33;
-	PanelWriteData(data, 1);
+	data = 0xC3;
+	panelWriteCmd(&data, 1);
+	data = 0x12;
+	panelWriteData(&data, 1);
 
-	data[0] = 0xB7;
-	PanelWriteCmd(data, 1);
+	data = 0xC4;
+	panelWriteCmd(&data, 1);
+	data = 0x20;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x35;
-	PanelWriteData(data, 1);
+	data = 0xC6;
+	panelWriteCmd(&data, 1);
+	data = 0x0F;
+	panelWriteData(&data, 1);
 
-	data[0] = 0xBB;
-	PanelWriteCmd(data, 1);
+	data = 0xD0;
+	panelWriteCmd(&data, 1); 
+	data = 0xA4;
+	panelWriteData(&data, 1);
+	data = 0xA1;
+	panelWriteData(&data, 1);
 
-	data[0] = 0x37;
-	PanelWriteData(data, 1);
+	data = 0xE0;
+	panelWriteCmd(&data, 1);
+	data = 0xD0;
+	panelWriteData(&data, 1);
+	data = 0x04;
+	panelWriteData(&data, 1);
+	data = 0x0D;
+	panelWriteData(&data, 1);
+	data = 0x11;
+	panelWriteData(&data, 1);
+	data = 0x13;
+	panelWriteData(&data, 1);
+	data = 0x2B;
+	panelWriteData(&data, 1);
+	data = 0x3F;
+	panelWriteData(&data, 1);
+	data = 0x54;
+	panelWriteData(&data, 1);
+	data = 0x4C;
+	panelWriteData(&data, 1);
+	data = 0x18;
+	panelWriteData(&data, 1);
+	data = 0x0D;
+	panelWriteData(&data, 1);
+	data = 0x0B;
+	panelWriteData(&data, 1);
+	data = 0x1F;
+	panelWriteData(&data, 1);
+	data = 0x23;
+	panelWriteData(&data, 1);
 
-	data[0] = 0xC0;
-	PanelWriteCmd(data, 1);
+	data = 0xE1;
+	panelWriteCmd(&data, 1);
+	data = 0xD0;
+	panelWriteData(&data, 1);
+	data = 0x04;
+	panelWriteData(&data, 1);
+	data = 0x0C;
+	panelWriteData(&data, 1);
+	data = 0x11;
+	panelWriteData(&data, 1);
+	data = 0x13;
+	panelWriteData(&data, 1);
+	data = 0x2C;
+	panelWriteData(&data, 1);
+	data = 0x3F;
+	panelWriteData(&data, 1);
+	data = 0x44;
+	panelWriteData(&data, 1);
+	data = 0x51;
+	panelWriteData(&data, 1);
+	data = 0x2F;
+	panelWriteData(&data, 1);
+	data = 0x1F;
+	panelWriteData(&data, 1);
+	data = 0x1F;
+	panelWriteData(&data, 1);
+	data = 0x20;
+	panelWriteData(&data, 1);
+	data = 0x23;
+	panelWriteData(&data, 1);
+	data = 0x21;
+	panelWriteCmd(&data, 1);
 
-	data[0] = 0x2C;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xC2;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0x01;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xC3;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0x12;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xC4;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0x20;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xC6;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0x0F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xD0;
-	PanelWriteCmd(data, 1); 
-
-	data[0] = 0xA4;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xA1;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xE0;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0xD0;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x04;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x0D;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x11;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x13;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x2B;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x3F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x54;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x4C;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x18;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x0D;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x0B;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x1F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x23;
-	PanelWriteData(data, 1);
-
-	data[0] = 0xE1;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0xD0;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x04;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x0C;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x11;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x13;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x2C;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x3F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x44;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x51;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x2F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x1F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x1F;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x20;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x23;
-	PanelWriteData(data, 1);
-
-	data[0] = 0x21;
-	PanelWriteCmd(data, 1);
-
-	data[0] = 0x29;
-	PanelWriteCmd(data, 1);
+	data = 0x29;
+	panelWriteCmd(&data, 1);
 	
 	cout << "Call SpiPanel::PanelInit() end." << endl;
 	return 0;
@@ -656,7 +588,7 @@ int SpiPanel::PanelInit()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelDeinit()
+int SpiPanel::panelDeinit()
 {
 	cout << "Call SpiPanel::PanelInit()." << endl;
 
@@ -671,7 +603,7 @@ int SpiPanel::PanelDeinit()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteBus(const void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::panelWriteBus(const void *dataBuf, unsigned long dataBufLen)
 {
 	//cout << "Call SpiPanel::PanelWriteBus()." << endl;
 
@@ -687,15 +619,14 @@ int SpiPanel::PanelWriteBus(const void *dataBuf, unsigned long dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteCmd(const void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::panelWriteCmd(const void *dataBuf, unsigned long dataBufLen)
 {
-	//cout << "Call SpiPanel::PanelWriteCmd()." << endl;
+	//cout << "Call SpiPanel::panelWriteCmd()." << endl;
 
 	gpioSetVal(PANEL_GPIO_DC, 0);
-	PanelWriteBus(dataBuf, dataBufLen);
-	gpioSetVal(PANEL_GPIO_DC, 1);
+	panelWriteBus(dataBuf, dataBufLen);
 	
-	//cout << "Call SpiPanel::PanelWriteCmd() end." << endl;
+	//cout << "Call SpiPanel::panelWriteCmd() end." << endl;
 	return 0;
 }
 
@@ -705,45 +636,48 @@ int SpiPanel::PanelWriteCmd(const void *dataBuf, unsigned long dataBufLen)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelWriteData(const void *dataBuf, unsigned long dataBufLen)
+int SpiPanel::panelWriteData(const void *dataBuf, unsigned long dataBufLen)
 {
-	//cout << "Call SpiPanel::PanelWriteData()." << endl;
+	//cout << "Call SpiPanel::panelWriteData()." << endl;
 
-	//gpioSetVal(PANEL_GPIO_DC, 1);
-	PanelWriteBus(dataBuf, dataBufLen);
+	gpioSetVal(PANEL_GPIO_DC, 1);
+	panelWriteBus(dataBuf, dataBufLen);
 	
-	//cout << "Call SpiPanel::PanelWriteData() end." << endl;
+	//cout << "Call SpiPanel::panelWriteData() end." << endl;
 	return 0;
 }
 
 /*-----------------------------------------------------------------------------
 描--述：设置屏坐标
-参--数：x1, y1, 起始坐标；x2, y2, 终点坐标。
+参--数：x0, y0, 起始坐标；x1, y1, 终点坐标。
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelSetAddress()
+int SpiPanel::panelSetAddress(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1)
 {
-	cout << "Call SpiPanel::PanelSetAddress()." << endl;
+	//cout << "Call SpiPanel::PanelSetAddress()." << endl;
 
-	unsigned int x1 = 0;
-	unsigned int y1 = 0;
-	unsigned int x2 = PANEL_WIDTH;
-	unsigned int y2 = PANEL_HEIGHT;
+	unsigned max = MAX((PANEL_WIDTH), (PANEL_HEIGHT));
+	if(x0 > max || y0 > max || x1 > max || y1 > max)
+	{
+		cerr << "Fail to call SpiPanel::panelSetAddress(). Argument is out of range."
+			<< "x0, y0, x1, y1 = " << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
+		return -1;
+	}
 
 	switch(USE_HORIZONTAL)
 	{
 		case 0:
 			break;
 		case 1:
+			y0 += 80;
 			y1 += 80;
-			y2 += 80;
 			break;
 		case 2:
 			break;
 		case 3:
+			x0 += 80;
 			x1 += 80;
-			x2 += 80;
 			break;
 		default:
 			cerr << "Call SpiPanel::PanelSetAddress(). Macro 'USE_HORIZONTAL' is out of range." 
@@ -751,31 +685,31 @@ int SpiPanel::PanelSetAddress()
 			break;
 	}
 
-	unsigned char data = 0x2a;
-	PanelWriteCmd(&data, 1);	// 列地址设置
+	unsigned int data = 0x2a;
+	panelWriteCmd(&data, 1);	// 列地址设置
+	data = x0 >> 8;
+	panelWriteData(&data, 1);
+	data = x0;
+	panelWriteData(&data, 1);
 	data = x1 >> 8;
-	PanelWriteData(&data, 1);
 	data = x1;
-	PanelWriteData(&data, 1);
-	data = x2 >> 8;
-	PanelWriteData(&data, 2);
-	data = x2;
-	PanelWriteData(&data, 2);
+	panelWriteData(&data, 1);
 	
 	data = 0x2b;
-	PanelWriteCmd(&data, 1);	// 行地址设置
+	panelWriteCmd(&data, 1);	// 行地址设置
+	data = y0 >> 8;
+	panelWriteData(&data, 1);
+	data = y0;
+	panelWriteData(&data, 1);
 	data = y1 >> 8;
-	PanelWriteData(&data, 1);
+	panelWriteData(&data, 1);
 	data = y1;
-	PanelWriteData(&data, 1);
-	data = y2 >> 8;
-	PanelWriteData(&data, 1);
-	data = y2;
-	PanelWriteData(&data, 1);
-	data = 0x2c;
-	PanelWriteCmd(&data, 1);	// 储存器写
+	panelWriteData(&data, 1);
 	
-	cout << "Call SpiPanel::PanelSetAddress() end." << endl;
+	data = 0x2c;
+	panelWriteCmd(&data, 1);	// 储存器写
+	
+	//cout << "Call SpiPanel::PanelSetAddress() end." << endl;
 	return 0;
 }
 
@@ -799,7 +733,7 @@ int SpiPanel::panelFill(unsigned short x0, unsigned short y0, unsigned short x1,
 		return -1;
 	}
 
-	PanelSetAddress();	//设置显示范围
+	panelSetAddress(x0, y0, x1, y1);	//设置显示范围
 	
 	unsigned int i = 0;
 	unsigned int j = 0;
@@ -808,11 +742,159 @@ int SpiPanel::panelFill(unsigned short x0, unsigned short y0, unsigned short x1,
 	{
 		for(j = x0; j < x1; ++j)
 		{
-			PanelWriteData(&mycolor, 2);
+			panelWriteData(&mycolor, 2);
 		}
 		//cout << "i = " << i << endl;
 	}
 	
 	cout << "Call SpiPanel::panelFill() end." << endl;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：在指定位置画一个点。
+参--数：x, y, 坐标；color, 色彩。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelDrawPoint(unsigned short x, unsigned short y, unsigned short color)
+{
+	//cout << "Call SpiPanel::panelDrawPoint()." << endl;
+	
+	panelSetAddress(x, y, x, y);//设置光标位置
+	panelWriteData(&color, 2);
+
+	//cout << "Call SpiPanel::panelDrawPoint() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：在指定位置画一条线。
+参--数：x0, y0, x1, y1, 起始点和终点坐标；color, 色彩。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelDrawLine(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color)
+{
+	cout << "Call SpiPanel::panelDrawLine()." << endl;
+	int xerr = 0, yerr = 0, delta_x = 0, delta_y = 0, distance = 0;
+	int incx = 0, incy = 0, uRow = 0, uCol = 0;
+	
+	delta_x = x1-x0;	//计算坐标增量 
+	delta_y = y1-y0;
+	uRow = x0;			//画线起点坐标
+	uCol = y0;
+	
+	if(delta_x > 0)
+	{
+		incx = 1;		//设置单步方向
+	}
+	else if(0 == delta_x)
+	{
+		incx = 0;		//垂直线
+	}
+	else
+	{
+		incx = -1;
+		delta_x = -delta_x;
+	}
+	
+	if(delta_y > 0)
+	{
+		incy = 1;
+	}
+	else if(0 == delta_y)
+	{
+		incy = 0;		//水平线
+	}
+	else
+	{
+		incy = -1;
+		delta_y = -delta_y;
+	}
+	
+	if(delta_x > delta_y)
+	{
+		distance = delta_x;	//选取基本增量坐标轴
+	}
+	else
+	{
+		distance = delta_y;
+	}
+	
+	unsigned short i = 0;
+	for(i = 0; i < distance + 1; ++i)
+	{
+		panelDrawPoint(uRow, uCol, color);	//画点
+		xerr += delta_x;
+		yerr += delta_y;
+		if(xerr > distance)
+		{
+			xerr -= distance;
+			uRow += incx;
+		}
+		if(yerr > distance)
+		{
+			yerr -= distance;
+			uCol += incy;
+		}
+	}
+
+	cout << "Call SpiPanel::panelDrawLine() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：在指定位置画一个矩形。
+参--数：x0, y0, x1, y1, 起始点和终点坐标；color, 色彩。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelDrawRectangle(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color)
+{
+	cout << "Call SpiPanel::panelDrawRectangle()." << endl;
+	
+	panelDrawLine(x0, y0, x1, y0, color);
+	panelDrawLine(x0, y0, x0, y1, color);
+	panelDrawLine(x0, y1, x1, y1, color);
+	panelDrawLine(x1, y0, x1, y1, color);
+
+	cout << "Call SpiPanel::panelDrawRectangle() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：在指定位置画一个圆。
+参--数：x, y, 圆心坐标；color, 色彩。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelDrawCircle(unsigned short x, unsigned short y, unsigned char r, unsigned short color)
+{
+	cout << "Call SpiPanel::panelDrawCircle()." << endl;
+	
+	int a = 0;
+	int b = 0;
+	
+	b = r;
+	while(a <= b)
+	{
+		panelDrawPoint(x - b, y - a, color);	//3
+		panelDrawPoint(x + b, y - a, color);	//0
+		panelDrawPoint(x - a, y + b, color);	//1
+		panelDrawPoint(x - a, y - b, color);	//2
+		panelDrawPoint(x + b, y + a, color);	//4
+		panelDrawPoint(x + a, y - b, color);	//5
+		panelDrawPoint(x + a, y + b, color);	//6
+		panelDrawPoint(x - b, y + a, color);	//7
+		
+		++a;
+		if((a * a + b * b) > (r * r))	//判断要画的点是否过远
+		{
+			--b;
+		}
+	}
+
+	cout << "Call SpiPanel::panelDrawCircle() end." << endl;
+	return 0;
 }
 
