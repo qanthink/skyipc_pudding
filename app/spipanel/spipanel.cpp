@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -922,183 +923,306 @@ unsigned int SpiPanel::mathPow(unsigned char m, unsigned char n)
 
 /*-----------------------------------------------------------------------------
 描--述：在指定位显示一个字符。
-参--数：x, y, 坐标；num 要显示的字符；fc 字的颜色；bc 字的背景色；
-		sizey 字号；mode: 0, 非叠加模式，1, 叠加模式
+参--数：x, y, 坐标；ch 要显示的字符；fc 字的颜色；bc 字的背景色；
+		sizey 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::panelShowChar(unsigned short x, unsigned short y, unsigned char num, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode)
+int SpiPanel::panelShowChar(unsigned short x, unsigned short y, unsigned char ch, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode)
 {
-	cout << "Call SpiPanel::panelShowChar()." << endl;
-#if 1
-	unsigned char temp = 0, sizex = 0, t = 0, m = 0;
-	unsigned short i = 0, TypefaceNum = 0;//一个字符所占字节大小
-	unsigned short x0 = 0;
+	//cout << "Call SpiPanel::panelShowChar()." << endl;
 	
-	x0 = x;
+	const unsigned char *pCharIndex = NULL;
+	ch -= ' ';							// 得到偏移后的值
+	
+	if(12 == sizey)
+	{
+		pCharIndex = ascii_1206[ch];	// 调用6x12字体
+	}
+	else if(16 == sizey)
+	{
+		pCharIndex = ascii_1608[ch];	// 调用8x16字体
+	}
+	else if(24 == sizey)
+	{
+		pCharIndex = ascii_2412[ch];	// 调用12x24字体
+	}
+	else if(32 == sizey)
+	{
+		pCharIndex = ascii_3216[ch];	// 调用16x32字体
+	}
+	else
+	{
+		cerr << "Fail to call SpiPanel::panelShowChar(). Argument is out of range. sizey = " << sizey << endl;
+		return -1;
+	}
+
+	unsigned short sizex = 0;
 	sizex = sizey / 2;
-	TypefaceNum = (sizex / 8 + ((sizex % 8) ? 1 : 0)) * sizey;
-	num -= ' ';		//得到偏移后的值
-	panelSetAddress(x, y, x + sizex - 1, y + sizey - 1);	//设置光标位置
-	for(i = 0; i< TypefaceNum; ++i)
-	{ 
-		if(12 == sizey)
+
+	int ret = 0;
+	ret = panelSetAddress(x, y, x + sizex - 1, y + sizey - 1);	// 设置光标位置
+	if(-1 == ret)
+	{
+		cerr << "Fail to call SpiPanel::panelShowChar()." << endl;
+		return -1;
+	}
+	
+	unsigned short xStart = 0;
+	unsigned short typefaceBytes = 0; 		// 一个字符所占字节大小
+	xStart = x;								// 记录起始位置
+	typefaceBytes = (sizex / 8 + ((sizex % 8) ? 1 : 0)) * sizey;
+	//cout << "sizex, sizey, typefaceBytes, = " << sizex << ", " << sizey << ", " << typefaceBytes << endl;
+	
+	unsigned short i = 0;
+	for(i = 0; i < typefaceBytes; ++i)
+	{
+		unsigned char j = 0;
+		for(j = 0; j < 8; ++j)
 		{
-			temp = ascii_1206[num][i];		//调用6x12字体
+			if(*pCharIndex & (0x01 << j))	// 如果存在像素点，则画出该点
+			{
+				panelDrawPoint(x, y, fc);
+			}
+			else							// 如果不存在像素点，则考虑是否为覆盖模式
+			{
+				if(bCoverMode)				// 如果为覆盖模式，则画出背景色
+				{
+					panelDrawPoint(x, y, bc);
+				}
+				else
+				{
+				}
+			}
+			
+			++x;							// 更新坐标位置
+			if((x - xStart) == sizex)
+			{
+				x = xStart;
+				++y;
+				break;
+			}
+			//usleep(50 * 1000);
 		}
-		else if(16 == sizey)
+		
+		++pCharIndex;
+	}
+
+	//cout << "Call SpiPanel::panelShowChar() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示字符串。
+参--数：x, y, 坐标；pText 要显示的字符串；fc 字的颜色；bc 字的背景色；
+		sizey 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowString(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode)
+{
+	//cout << "Call SpiPanel::panelShowString()." << endl;
+
+	if(NULL == pText)
+	{
+		cerr << "Fail to call SpiPanel::panelShowString(). Arugument has null value." << endl;
+		return -1;
+	}
+	
+	while('\0' != *pText)
+	{
+		panelShowChar(x, y, *pText, fc, bc, sizey, bCoverMode);
+		x += sizey/2;
+		++pText;
+	}
+
+	//cout << "Call SpiPanel::panelShowString() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示整形数字。
+参--数：x, y, 坐标；num 要显示的数字；fc 字的颜色；bc 字的背景色；
+		sizey 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：long long的最大值：9223372036854775807
+		long long的最小值：-9223372036854775808
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowIntNum(unsigned short x, unsigned short y, long long int num, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode)
+{
+	//cout << "Call SpiPanel::panelShowIntNum()." << endl;
+
+	string str = to_string(num);
+	panelShowString(x, y, str.data(), fc, bc, sizey, bCoverMode);
+
+	//cout << "Call SpiPanel::panelShowIntNum() end." << endl;
+	return 0;
+};				//显示整数变量
+
+/*-----------------------------------------------------------------------------
+描--述：显示浮点型数字。
+参--数：x, y, 坐标；num 要显示的数字；fc 字的颜色；bc 字的背景色；
+		sizey 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：double的精度为15-16位。
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowFloatNum(unsigned short x, unsigned short y, double num, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode)
+{
+	//cout << "Call SpiPanel::panelShowFloatNum()." << endl;
+
+	string str = to_string(num);
+	panelShowString(x, y, str.data(), fc, bc, sizey, bCoverMode);
+	
+	//cout << "Call SpiPanel::panelShowFloatNum() end." << endl;
+	return 0;
+}; 					//显示两位小数变量
+
+/*-----------------------------------------------------------------------------
+描--述：显示汉字。
+参--数：x, y, 坐标；pFont 指向要显示的汉字；fc 字的颜色；bc 字的背景色；
+		fontSize 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::PanelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示单个16x16汉
+{
+	//cout << "Call SpiPanel::PanelShowChineseFont()." << endl;
+
+	// 异常处理：入参错误
+	if(NULL == pFont)
+	{
+		cerr << "Fail to call SpiPanel::PanelShowChineseFont(). Argument has null value." << endl;
+		return -1;
+	}
+	
+	unsigned int fontNum;							// 收录在库中的汉字数量
+	unsigned int stepSize = 0;
+	const void *pFontArray = NULL;
+	
+	switch(fontSize)
+	{
+		case 12:
+			stepSize = sizeof(typFNT_GB12);			// 计算每个汉字在数组中占的字节数，作为搜索汉字时的索引步进值
+			fontNum = sizeof(tfont12) / stepSize;	// 计算汉字数量
+			pFontArray = &tfont12;
+			break;
+		case 16:
+			stepSize = sizeof(typFNT_GB16);
+			fontNum = sizeof(tfont16) / stepSize;
+			pFontArray = &tfont16;
+			break;
+		case 24:
+			stepSize = sizeof(typFNT_GB24);
+			fontNum = sizeof(tfont24) / stepSize;
+			pFontArray = &tfont24;
+			break;
+		case 32:
+			stepSize = sizeof(typFNT_GB32);
+			fontNum = sizeof(tfont32) / stepSize;
+			pFontArray = &tfont32;
+			break;
+		default:
+			stepSize = sizeof(typFNT_GB12);
+			fontNum = sizeof(tfont12) / stepSize;
+			pFontArray = &tfont12;
+			break;
+	}
+
+	unsigned int i = 0;
+	const char *pIndex = NULL;
+
+	// 在字库中检索字体
+	for(i = 0; i < fontNum; ++i)
+	{
+		bool bEqual = false;
+		pIndex = (char *)pFontArray + (i * stepSize);
+		bEqual = (*pIndex == *pFont) && (*(pIndex + 1) == *(pFont + 1));
+		if(bEqual)
 		{
-			temp = ascii_1608[num][i];		//调用8x16字体
-		}
-		else if(24 == sizey)
-		{
-			temp = ascii_2412[num][i];		//调用12x24字体
-		}
-		else if(32 == sizey)
-		{
-			temp = ascii_3216[num][i];		//调用16x32字体
+			break;
 		}
 		else
 		{
-			return 0;
 		}
-		
-		for(t = 0; t < 8; ++t)
+	}
+
+	// 异常处理：没有检索到字体时
+	if(i == fontNum)
+	{
+		cerr << "Fail to call SpiPanel::PanelShowChineseFont(). The Chinese font is not exist:"
+			<< *pFont << endl;
+		return -1;
+	}
+
+	unsigned int xStart = 0;
+	unsigned short typefaceBytes;			// 一个汉字所占字节大小
+
+	xStart = x;								// 记录光标起始位置
+	pIndex += 3;							// 取模位置
+	typefaceBytes = (fontSize / 8 + ((fontSize % 8) ? 1 : 0)) * fontSize;
+	
+	//panelSetAddress(x, y, x + fontSize - 1, y + fontSize -1);
+	
+	for(i = 0; i < typefaceBytes; ++i)
+	{
+		unsigned int j = 0;
+		for(j = 0; j < 8; ++j)
 		{
-			#if 0
-			if(!mode)	//非叠加模式
+			if(*(pIndex + i) & (0x01 << j))
 			{
-				if(temp & (0x01 << t))
+				panelDrawPoint(x, y, fc);		// 画一个点
+			}
+			else
+			{
+				if(bCoverMode)
 				{
-					unsigned char data = 0;
-					data = fc >> 8;
-					panelWriteData(&data, 1);
-					data = fc ;
-					panelWriteData(&data, 1);
+					panelDrawPoint(x, y, bc);
 				}
 				else
 				{
-					unsigned short data = 0;
-					data = bc >> 8;
-					panelWriteData(&data, 1);
-					data = bc ;
-					panelWriteData(&data, 1);
-				}
-				
-				++m;
-				if(0 == (m % sizex))
-				{
-					m = 0;
-					break;
+
 				}
 			}
-			#endif
-			//else		//叠加模式
+			
+			++x;
+			if((x - xStart) == fontSize)
 			{
-				if(temp & (0x01 << t))
-				{
-					panelDrawPoint(x, y, fc);	//画一个点
-				}
-				else
-				{
-					if(!mode)
-					{
-						
-					}
-					else
-					{
-						panelDrawPoint(x, y, bc);	
-					}
-				}
-				
-				++x;
-				if((x - x0) == sizex)
-				{
-					x = x0;
-					++y;
-					break;
-				}
+				x = xStart;
+				++y;
+				break;
 			}
 		}
 	}
-#else
-	unsigned char temp,sizex,t,m=0;
-	unsigned short i,TypefaceNum;//一个字符所占字节大小
-	unsigned short x0=x;
-	sizex=sizey/2;
-	TypefaceNum=(sizex/8+((sizex%8)?1:0))*sizey;
-	num=num-' ';    //得到偏移后的值
-	panelSetAddress(x,y,x+sizex-1,y+sizey-1);  //设置光标位置 
-	for(i=0;i<TypefaceNum;i++)
-	{ 
-		if(sizey==12)temp=ascii_1206[num][i];		       //调用6x12字体
-		else if(sizey==16)temp=ascii_1608[num][i];		 //调用8x16字体
-		else if(sizey==24)temp=ascii_2412[num][i];		 //调用12x24字体
-		else if(sizey==32)temp=ascii_3216[num][i];		 //调用16x32字体
-		else return 0;
-		for(t=0;t<8;t++)
-		{
-			if(!mode)//非叠加模式
-			{
-				if(temp&(0x01<<t)){
-					//LCD_WR_DATA(fc);
-					unsigned char data = fc >> 8;
-					panelWriteData(&data, 1);
-					data = fc;
-					panelWriteData(&data, 1);
-				}
-				else {
-					//LCD_WR_DATA(bc);
-					unsigned char data = bc >> 8;
-					panelWriteData(&data, 1);
-					data = bc;
-					panelWriteData(&data, 1);
-				}
-				m++;
-				if(m%sizex==0)
-				{
-					m=0;
-					break;
-				}
-			}
-			else//叠加模式
-			{
-				if(temp&(0x01<<t)){
-					//LCD_DrawPoint(x,y,fc);
-					panelDrawPoint(x, y, fc);
-				}
-				else
-					{}
-				x++;
-				if((x-x0)==sizex)
-				{
-					x=x0;
-					y++;
-					break;
-				}
-			}
-		}
-	}   	 	  
-#endif
-	cout << "Call SpiPanel::panelShowChar() end." << endl;
-	return 0;
-};				//
 	
-int SpiPanel::panelShowString(unsigned short x, unsigned short y, const unsigned char *p, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode)
-{
-
+	//cout << "Call SpiPanel::PanelShowChineseFont() end." << endl;
 	return 0;
-}; //显示字符串
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示中文文本。
+参--数：x, y, 坐标；pText 指向要显示的文本；fc 字的颜色；bc 字的背景色；
+		fontSize 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::PanelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示汉字串
+{
+	cout << "Call SpiPanel::PanelShowChineseText()." << endl;
+
+	if(NULL == pText)
+	{
+		cerr << "Fail to call SpiPanel::PanelShowChineseText(). Argument has null value." << endl;
+		return -1;
+	}
 	
-int SpiPanel::panelShowIntNum(unsigned short x, unsigned short y, unsigned short num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey)
-{
+	while('\0' != *pText && '\0' != *(pText + 1))
+	{
+		PanelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
+		pText += 2;
+		x += fontSize;
+	}
 
+	cout << "Call SpiPanel::PanelShowChineseText() end." << endl;
 	return 0;
-};				//显示整数变量
-	
-int SpiPanel::panelShowFloatNum(unsigned short x, unsigned short y, float num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey)
-{
-
-	return 0;
-}; 					//显示两位小数变量
+}
 

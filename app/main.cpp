@@ -1,7 +1,6 @@
 /*----------------------------------------------------------------Â 
-sigma starç‰ˆæƒæ‰€æœ‰ã€‚
-ä½œè€…ï¼š
-æ—¶é—´ï¼š2020.7.10
+sigma starç‰ˆæƒæ‰¢ãæœ‰ã¢ã?ä½œè¢ã…ï¼š
+æ—¶é—´ï¼?020.7.10
 ----------------------------------------------------------------*/
 
 #include "iostream"
@@ -34,15 +33,34 @@ int main(int argc, const char *argv[])
 	int color = 0;
 	srand((unsigned)time(NULL));
 	color = rand();
-	pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0x00);
+	
+	//if(0)
+	{
+		pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, color);
+	}
+	
 	pSpiPanel->panelDrawPoint(10, 10, 0xFFFF);
-	pSpiPanel->panelDrawPoint(20, 20, 0xFFFF);
-	pSpiPanel->panelDrawLine(30, 30, 50, 50, 0xFFFF);
-	pSpiPanel->panelDrawRectangle(60, 60, 80, 70, 0xFFFF);
-	pSpiPanel->panelDrawCircle(100, 100, 20, 0xFFFF);
-	pSpiPanel->panelShowChar(130, 130, 'a', 0xFFFF, 0xCCCC, 16, 1);
-	sleep(1);
-	pSpiPanel->panelShowChar(130, 130, 'B', 0xFFFF, 0xCCCC, 16, 1);
+	pSpiPanel->panelDrawPoint(20, 10, 0xFFFF);
+	pSpiPanel->panelDrawLine(30, 10, 50, 20, 0xFFFF);
+	pSpiPanel->panelDrawRectangle(60, 10, 80, 20, 0xFFFF);
+	pSpiPanel->panelDrawCircle(100, 20, 10, 0xFFFF);
+	
+	pSpiPanel->panelShowChar(10, 30, 'a', 0xFFFF, 0xCCCC, 12, true);
+	pSpiPanel->panelShowChar(30, 30, 'b', 0xFFFF, 0xCCCC, 16, true);
+	pSpiPanel->panelShowChar(50, 30, 'C', 0xFFFF, 0xCCCC, 24, true);
+	pSpiPanel->panelShowChar(80, 30, 'D', 0xFFFF, 0xCCCC, 32, true);
+	
+	pSpiPanel->panelShowString(0, 60, "abcdefghij0123456789", 0xFFFF, 0xCCCC, 24, true);
+	pSpiPanel->panelShowString(0, 90, "ABCDE0123456789", 0xFFFF, 0xCCCC, 32, true);
+
+	pSpiPanel->panelShowIntNum(10, 130, -9223372036854775807, 0xFFFF, 0xCCCC, 16, true);
+	pSpiPanel->panelShowFloatNum(10, 150, -123456789.0123456, 0xFFFF, 0xCCCC, 16, true);
+	pSpiPanel->PanelShowChineseFont(10, 170, "ÖÐ", 0xFFFF, 0xCCCC, 12, true);
+	pSpiPanel->PanelShowChineseFont(30, 170, "¾°", 0xFFFF, 0xCCCC, 16, false);
+	pSpiPanel->PanelShowChineseFont(50, 170, "Ô°", 0xFFFF, 0xCCCC, 24, false);
+	pSpiPanel->PanelShowChineseFont(80, 170, "µç", 0xFFFF, 0xCCCC, 32, true);
+	pSpiPanel->PanelShowChineseText(120, 170, "ÖÐ¾°Ô°µç×Ó", 0xFFFF, 0xCCCC, 24, true);
+
 
 	return 0;
 }

@@ -40,11 +40,15 @@ public:
 	int panelDrawRectangle(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);//在指定位置画一个矩形
 	int panelDrawCircle(unsigned short x, unsigned short y, unsigned char r, unsigned short color);	//在指定位置画一个圆
 
-	// panel 显示数字+字符功能
-	int panelShowChar(unsigned short x, unsigned short y, unsigned char num, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode);				//显示一个字符
-	int panelShowString(unsigned short x, unsigned short y, const unsigned char *p, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode);	//显示字符串
-	int panelShowIntNum(unsigned short x, unsigned short y, unsigned short num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey);				//显示整数变量
-	int panelShowFloatNum(unsigned short x, unsigned short y, float num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey);						//显示两位小数变量
+	// panel 显示数字+字符
+	int panelShowChar(unsigned short x, unsigned short y, unsigned char ch, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode);			//显示一个字符
+	int panelShowString(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode);	//显示字符串
+	int panelShowIntNum(unsigned short x, unsigned short y, long long int num, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode);	//显示整数变量
+	int panelShowFloatNum(unsigned short x, unsigned short y, double num, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode);				//显示两位小数变量
+
+	// panel 显示中文汉字
+	int PanelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示单个12x12汉字
+	int PanelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示汉字串
 
 private:
 	SpiPanel();
