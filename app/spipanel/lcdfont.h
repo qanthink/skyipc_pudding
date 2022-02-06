@@ -1,5 +1,5 @@
-#ifndef __LCDFONT_H
-#define __LCDFONT_H 	   
+#ifndef __LCDFONT_H__
+#define __LCDFONT_H__
 
 const unsigned char ascii_1206[][12]={
 

@@ -15,6 +15,8 @@ sigma star版权所有。
 设计思路：
 */
 
+#include "picture.h"
+
 // Panel GPIO Operation
 #define PANEL_GPIO_DC 	47	//数据与指令
 #define PANEL_GPIO_BLK 	108	//背光
@@ -47,8 +49,11 @@ public:
 	int panelShowFloatNum(unsigned short x, unsigned short y, double num, unsigned short fc, unsigned short bc, unsigned short sizey, bool bCoverMode);				//显示两位小数变量
 
 	// panel 显示中文汉字
-	int PanelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示单个12x12汉字
-	int PanelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示汉字串
+	int panelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示单个12x12汉字
+	int panelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode);//显示汉字串
+
+	// panel 显示图片
+	int panelShowPicture(unsigned short x, unsigned short y, unsigned short width, unsigned short height, const unsigned char *pPicture);//显示图片
 
 private:
 	SpiPanel();
@@ -82,9 +87,6 @@ private:
 	int panelWriteCmd(const void *dataBuf, unsigned long dataBufLen);
 	int panelWriteData(const void *dataBuf, unsigned long dataBufLen);
 	int panelSetAddress(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1);
-
-	// panel绘图相关计算函数
-	unsigned int mathPow(unsigned char m, unsigned char n);		//求幂
 
 	bool bEnable;
 };

@@ -410,7 +410,7 @@ int SpiPanel::gpioSetVal(unsigned int gpioIndex, unsigned int val)
 -----------------------------------------------------------------------------*/
 int SpiPanel::panelInit()
 {
-	cout << "Call SpiPanel::PanelInit()." << endl;
+	cout << "Call SpiPanel::panelInit()." << endl;
 
 	gpioSetVal(PANEL_GPIO_RES, 0);
 	usleep(100 * 1000);		// n * 1000 = n ms.
@@ -581,7 +581,7 @@ int SpiPanel::panelInit()
 	data = 0x29;
 	panelWriteCmd(&data, 1);
 	
-	cout << "Call SpiPanel::PanelInit() end." << endl;
+	cout << "Call SpiPanel::panelInit() end." << endl;
 	return 0;
 }
 
@@ -593,10 +593,10 @@ int SpiPanel::panelInit()
 -----------------------------------------------------------------------------*/
 int SpiPanel::panelDeinit()
 {
-	cout << "Call SpiPanel::PanelInit()." << endl;
+	cout << "Call SpiPanel::panelInit()." << endl;
 
 
-	cout << "Call SpiPanel::PanelDeinit() end." << endl;
+	cout << "Call SpiPanel::panelDeinit() end." << endl;
 	return 0;
 }
 
@@ -608,11 +608,11 @@ int SpiPanel::panelDeinit()
 -----------------------------------------------------------------------------*/
 int SpiPanel::panelWriteBus(const void *dataBuf, unsigned long dataBufLen)
 {
-	//cout << "Call SpiPanel::PanelWriteBus()." << endl;
+	//cout << "Call SpiPanel::panelWriteBus()." << endl;
 
 	spiDevWrite(dataBuf, dataBufLen);
 	
-	//cout << "Call SpiPanel::PanelWriteBus() end." << endl;
+	//cout << "Call SpiPanel::panelWriteBus() end." << endl;
 	return 0;
 }
 
@@ -658,7 +658,7 @@ int SpiPanel::panelWriteData(const void *dataBuf, unsigned long dataBufLen)
 -----------------------------------------------------------------------------*/
 int SpiPanel::panelSetAddress(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1)
 {
-	//cout << "Call SpiPanel::PanelSetAddress()." << endl;
+	//cout << "Call SpiPanel::panelSetAddress()." << endl;
 
 	unsigned max = MAX((PANEL_WIDTH), (PANEL_HEIGHT));
 	if(x0 > max || y0 > max || x1 > max || y1 > max)
@@ -683,18 +683,19 @@ int SpiPanel::panelSetAddress(unsigned short x0, unsigned short y0, unsigned sho
 			x1 += 80;
 			break;
 		default:
-			cerr << "Call SpiPanel::PanelSetAddress(). Macro 'USE_HORIZONTAL' is out of range." 
+			cerr << "Call SpiPanel::panelSetAddress(). Macro 'USE_HORIZONTAL' is out of range." 
 				<< "Use default value 0." << endl;
 			break;
 	}
 
-	unsigned int data = 0x2a;
+	unsigned char data = 0x2a;
 	panelWriteCmd(&data, 1);	// 列地址设置
 	data = x0 >> 8;
 	panelWriteData(&data, 1);
 	data = x0;
 	panelWriteData(&data, 1);
 	data = x1 >> 8;
+	panelWriteData(&data, 1);
 	data = x1;
 	panelWriteData(&data, 1);
 	
@@ -712,7 +713,7 @@ int SpiPanel::panelSetAddress(unsigned short x0, unsigned short y0, unsigned sho
 	data = 0x2c;
 	panelWriteCmd(&data, 1);	// 储存器写
 	
-	//cout << "Call SpiPanel::PanelSetAddress() end." << endl;
+	//cout << "Call SpiPanel::panelSetAddress() end." << endl;
 	return 0;
 }
 
@@ -902,26 +903,6 @@ int SpiPanel::panelDrawCircle(unsigned short x, unsigned short y, unsigned char 
 }
 
 /*-----------------------------------------------------------------------------
-描--述：求幂。
-参--数：m, 底数；n, 指数。
-返回值：返回计算结果。
-注--意：
------------------------------------------------------------------------------*/
-unsigned int SpiPanel::mathPow(unsigned char m, unsigned char n)
-{
-	//cout << "Call SpiPanel::mathPow()." << endl;
-
-	unsigned int result = 1;
-	while(n--)
-	{
-		result *= m;
-	}
-
-	//cout << "Call SpiPanel::mathPow() end." << endl;
-	return result;
-}; 	//求幂
-
-/*-----------------------------------------------------------------------------
 描--述：在指定位显示一个字符。
 参--数：x, y, 坐标；ch 要显示的字符；fc 字的颜色；bc 字的背景色；
 		sizey 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
@@ -1084,14 +1065,14 @@ int SpiPanel::panelShowFloatNum(unsigned short x, unsigned short y, double num, 
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示单个16x16汉
+int SpiPanel::panelShowChineseFont(unsigned short x, unsigned short y, const char *pFont, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示单个16x16汉
 {
-	//cout << "Call SpiPanel::PanelShowChineseFont()." << endl;
+	//cout << "Call SpiPanel::panelShowChineseFont()." << endl;
 
 	// 异常处理：入参错误
 	if(NULL == pFont)
 	{
-		cerr << "Fail to call SpiPanel::PanelShowChineseFont(). Argument has null value." << endl;
+		cerr << "Fail to call SpiPanel::panelShowChineseFont(). Argument has null value." << endl;
 		return -1;
 	}
 	
@@ -1149,7 +1130,7 @@ int SpiPanel::PanelShowChineseFont(unsigned short x, unsigned short y, const cha
 	// 异常处理：没有检索到字体时
 	if(i == fontNum)
 	{
-		cerr << "Fail to call SpiPanel::PanelShowChineseFont(). The Chinese font is not exist:"
+		cerr << "Fail to call SpiPanel::panelShowChineseFont(). The Chinese font is not exist:"
 			<< *pFont << endl;
 		return -1;
 	}
@@ -1194,7 +1175,7 @@ int SpiPanel::PanelShowChineseFont(unsigned short x, unsigned short y, const cha
 		}
 	}
 	
-	//cout << "Call SpiPanel::PanelShowChineseFont() end." << endl;
+	//cout << "Call SpiPanel::panelShowChineseFont() end." << endl;
 	return 0;
 }
 
@@ -1205,24 +1186,63 @@ int SpiPanel::PanelShowChineseFont(unsigned short x, unsigned short y, const cha
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int SpiPanel::PanelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示汉字串
+int SpiPanel::panelShowChineseText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)//显示汉字串
 {
-	cout << "Call SpiPanel::PanelShowChineseText()." << endl;
+	cout << "Call SpiPanel::panelShowChineseText()." << endl;
 
 	if(NULL == pText)
 	{
-		cerr << "Fail to call SpiPanel::PanelShowChineseText(). Argument has null value." << endl;
+		cerr << "Fail to call SpiPanel::panelShowChineseText(). Argument has null value." << endl;
 		return -1;
 	}
 	
 	while('\0' != *pText && '\0' != *(pText + 1))
 	{
-		PanelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
+		panelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
 		pText += 2;
 		x += fontSize;
 	}
 
-	cout << "Call SpiPanel::PanelShowChineseText() end." << endl;
+	cout << "Call SpiPanel::panelShowChineseText() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示图片。
+参--数：x, y, 坐标；width, height, 图像宽高；pPicture, 指向图片数组。
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowPicture(unsigned short x, unsigned short y, unsigned short width, unsigned short height, const unsigned char *pPicture)
+{
+	cout << "Call SpiPanel::panelShowPicture()." << endl;
+
+	if(NULL == pPicture)
+	{
+		cerr << "Fail to call SpiPanel::panelShowPicture(). Argument has null value." << endl;
+		return -1;
+	}
+
+	panelSetAddress(x, y, x + height - 1, y + width - 1);
+	
+	unsigned int i = 0;
+	unsigned int k = 0;
+	for(i = 0; i < height; ++i)
+	{
+		unsigned int j = 0;
+		for(j = 0; j < width; ++j)
+		{
+			unsigned char data = 0;
+			
+			data = pPicture[k * 2];
+			panelWriteData(&data, 1);
+			data = pPicture[k * 2 + 1];
+			panelWriteData(&data, 1);
+			++k;
+		}
+	}
+	
+	cout << "Call SpiPanel::panelShowPicture() end." << endl;
 	return 0;
 }
 
