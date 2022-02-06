@@ -40,6 +40,9 @@ int main(int argc, const char *argv[])
 	pSpiPanel->panelDrawLine(30, 30, 50, 50, 0xFFFF);
 	pSpiPanel->panelDrawRectangle(60, 60, 80, 70, 0xFFFF);
 	pSpiPanel->panelDrawCircle(100, 100, 20, 0xFFFF);
+	pSpiPanel->panelShowChar(130, 130, 'a', 0xFFFF, 0xCCCC, 16, 1);
+	sleep(1);
+	pSpiPanel->panelShowChar(130, 130, 'B', 0xFFFF, 0xCCCC, 16, 1);
 
 	return 0;
 }

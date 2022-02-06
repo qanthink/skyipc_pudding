@@ -9,6 +9,8 @@
 */
 
 #include "spipanel.h"
+#include "lcdfont.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <sys/stat.h>
@@ -897,4 +899,206 @@ int SpiPanel::panelDrawCircle(unsigned short x, unsigned short y, unsigned char 
 	cout << "Call SpiPanel::panelDrawCircle() end." << endl;
 	return 0;
 }
+
+/*-----------------------------------------------------------------------------
+描--述：求幂。
+参--数：m, 底数；n, 指数。
+返回值：返回计算结果。
+注--意：
+-----------------------------------------------------------------------------*/
+unsigned int SpiPanel::mathPow(unsigned char m, unsigned char n)
+{
+	//cout << "Call SpiPanel::mathPow()." << endl;
+
+	unsigned int result = 1;
+	while(n--)
+	{
+		result *= m;
+	}
+
+	//cout << "Call SpiPanel::mathPow() end." << endl;
+	return result;
+}; 	//求幂
+
+/*-----------------------------------------------------------------------------
+描--述：在指定位显示一个字符。
+参--数：x, y, 坐标；num 要显示的字符；fc 字的颜色；bc 字的背景色；
+		sizey 字号；mode: 0, 非叠加模式，1, 叠加模式
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowChar(unsigned short x, unsigned short y, unsigned char num, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode)
+{
+	cout << "Call SpiPanel::panelShowChar()." << endl;
+#if 1
+	unsigned char temp = 0, sizex = 0, t = 0, m = 0;
+	unsigned short i = 0, TypefaceNum = 0;//一个字符所占字节大小
+	unsigned short x0 = 0;
+	
+	x0 = x;
+	sizex = sizey / 2;
+	TypefaceNum = (sizex / 8 + ((sizex % 8) ? 1 : 0)) * sizey;
+	num -= ' ';		//得到偏移后的值
+	panelSetAddress(x, y, x + sizex - 1, y + sizey - 1);	//设置光标位置
+	for(i = 0; i< TypefaceNum; ++i)
+	{ 
+		if(12 == sizey)
+		{
+			temp = ascii_1206[num][i];		//调用6x12字体
+		}
+		else if(16 == sizey)
+		{
+			temp = ascii_1608[num][i];		//调用8x16字体
+		}
+		else if(24 == sizey)
+		{
+			temp = ascii_2412[num][i];		//调用12x24字体
+		}
+		else if(32 == sizey)
+		{
+			temp = ascii_3216[num][i];		//调用16x32字体
+		}
+		else
+		{
+			return 0;
+		}
+		
+		for(t = 0; t < 8; ++t)
+		{
+			#if 0
+			if(!mode)	//非叠加模式
+			{
+				if(temp & (0x01 << t))
+				{
+					unsigned char data = 0;
+					data = fc >> 8;
+					panelWriteData(&data, 1);
+					data = fc ;
+					panelWriteData(&data, 1);
+				}
+				else
+				{
+					unsigned short data = 0;
+					data = bc >> 8;
+					panelWriteData(&data, 1);
+					data = bc ;
+					panelWriteData(&data, 1);
+				}
+				
+				++m;
+				if(0 == (m % sizex))
+				{
+					m = 0;
+					break;
+				}
+			}
+			#endif
+			//else		//叠加模式
+			{
+				if(temp & (0x01 << t))
+				{
+					panelDrawPoint(x, y, fc);	//画一个点
+				}
+				else
+				{
+					if(!mode)
+					{
+						
+					}
+					else
+					{
+						panelDrawPoint(x, y, bc);	
+					}
+				}
+				
+				++x;
+				if((x - x0) == sizex)
+				{
+					x = x0;
+					++y;
+					break;
+				}
+			}
+		}
+	}
+#else
+	unsigned char temp,sizex,t,m=0;
+	unsigned short i,TypefaceNum;//一个字符所占字节大小
+	unsigned short x0=x;
+	sizex=sizey/2;
+	TypefaceNum=(sizex/8+((sizex%8)?1:0))*sizey;
+	num=num-' ';    //得到偏移后的值
+	panelSetAddress(x,y,x+sizex-1,y+sizey-1);  //设置光标位置 
+	for(i=0;i<TypefaceNum;i++)
+	{ 
+		if(sizey==12)temp=ascii_1206[num][i];		       //调用6x12字体
+		else if(sizey==16)temp=ascii_1608[num][i];		 //调用8x16字体
+		else if(sizey==24)temp=ascii_2412[num][i];		 //调用12x24字体
+		else if(sizey==32)temp=ascii_3216[num][i];		 //调用16x32字体
+		else return 0;
+		for(t=0;t<8;t++)
+		{
+			if(!mode)//非叠加模式
+			{
+				if(temp&(0x01<<t)){
+					//LCD_WR_DATA(fc);
+					unsigned char data = fc >> 8;
+					panelWriteData(&data, 1);
+					data = fc;
+					panelWriteData(&data, 1);
+				}
+				else {
+					//LCD_WR_DATA(bc);
+					unsigned char data = bc >> 8;
+					panelWriteData(&data, 1);
+					data = bc;
+					panelWriteData(&data, 1);
+				}
+				m++;
+				if(m%sizex==0)
+				{
+					m=0;
+					break;
+				}
+			}
+			else//叠加模式
+			{
+				if(temp&(0x01<<t)){
+					//LCD_DrawPoint(x,y,fc);
+					panelDrawPoint(x, y, fc);
+				}
+				else
+					{}
+				x++;
+				if((x-x0)==sizex)
+				{
+					x=x0;
+					y++;
+					break;
+				}
+			}
+		}
+	}   	 	  
+#endif
+	cout << "Call SpiPanel::panelShowChar() end." << endl;
+	return 0;
+};				//
+	
+int SpiPanel::panelShowString(unsigned short x, unsigned short y, const unsigned char *p, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode)
+{
+
+	return 0;
+}; //显示字符串
+	
+int SpiPanel::panelShowIntNum(unsigned short x, unsigned short y, unsigned short num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey)
+{
+
+	return 0;
+};				//显示整数变量
+	
+int SpiPanel::panelShowFloatNum(unsigned short x, unsigned short y, float num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey)
+{
+
+	return 0;
+}; 					//显示两位小数变量
 

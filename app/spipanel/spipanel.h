@@ -33,11 +33,18 @@ public:
 	int enable();
 	int disable();
 
+	// panel 基本点线功能
 	int panelFill(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);	//在指定区域填充颜色
 	int panelDrawPoint(unsigned short x, unsigned short y, unsigned short color);	//在指定位置画一个点
 	int panelDrawLine(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);	//在指定位置画一条线
 	int panelDrawRectangle(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1, unsigned short color);//在指定位置画一个矩形
 	int panelDrawCircle(unsigned short x, unsigned short y, unsigned char r, unsigned short color);	//在指定位置画一个圆
+
+	// panel 显示数字+字符功能
+	int panelShowChar(unsigned short x, unsigned short y, unsigned char num, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode);				//显示一个字符
+	int panelShowString(unsigned short x, unsigned short y, const unsigned char *p, unsigned short fc, unsigned short bc, unsigned char sizey, unsigned char mode);	//显示字符串
+	int panelShowIntNum(unsigned short x, unsigned short y, unsigned short num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey);				//显示整数变量
+	int panelShowFloatNum(unsigned short x, unsigned short y, float num, unsigned char len, unsigned short fc, unsigned short bc, unsigned char sizey);						//显示两位小数变量
 
 private:
 	SpiPanel();
@@ -71,6 +78,9 @@ private:
 	int panelWriteCmd(const void *dataBuf, unsigned long dataBufLen);
 	int panelWriteData(const void *dataBuf, unsigned long dataBufLen);
 	int panelSetAddress(unsigned short x0, unsigned short y0, unsigned short x1, unsigned short y1);
+
+	// panel绘图相关计算函数
+	unsigned int mathPow(unsigned char m, unsigned char n);		//求幂
 
 	bool bEnable;
 };
