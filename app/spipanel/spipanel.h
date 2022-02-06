@@ -22,9 +22,9 @@ sigma star版权所有。
 #define PANEL_GPIO_BLK 	108	//背光
 #define PANEL_GPIO_RES 	46	//复位
 
-#define USE_HORIZONTAL 0	// 旋转0-1代表90°，2-3代表180°
-#define PANEL_WIDTH 240
-#define PANEL_HEIGHT 240
+#define USE_HORIZONTAL 	0	// 旋转0-1代表90°，2-3代表180°
+#define PANEL_WIDTH 	240
+#define PANEL_HEIGHT 	240
 
 #define MAX(x, y) (((x) >= (y)) ? ((x)) : ((y)))
 
