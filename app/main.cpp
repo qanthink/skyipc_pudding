@@ -1,6 +1,6 @@
-/*---------------------------------------------------------------- 
-sigma star版权扢�有��?作��：
-时间�?020.7.10
+/*----------------------------------------------------------------聽
+sigma star鐗堟潈鎵鏈夈?浣滆咃細
+鏃堕棿锛?020.7.10
 ----------------------------------------------------------------*/
 
 #include "iostream"
@@ -38,9 +38,11 @@ int main(int argc, const char *argv[])
 	{
 		pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, fbColor);
 	}
-#if 1
+	
 	unsigned int fontColor = 0xFFFF;
-	unsigned int backColor = 0xAAAA;
+	unsigned int backColor = 0x0000;
+	
+#if 1
 	pSpiPanel->panelDrawPoint(10, 10, fontColor);
 	pSpiPanel->panelDrawPoint(20, 10, fontColor);
 	pSpiPanel->panelDrawLine(30, 10, 50, 20, fontColor);
@@ -52,17 +54,19 @@ int main(int argc, const char *argv[])
 	pSpiPanel->panelShowChar(50, 30, 'C', fontColor, backColor, 24, true);
 	pSpiPanel->panelShowChar(80, 30, 'D', fontColor, backColor, 32, true);
 	
-	pSpiPanel->panelShowString(0, 60, "abcdefghij0123456789", fontColor, backColor, 24, true);
-	pSpiPanel->panelShowString(0, 90, "ABCDE0123456789", fontColor, backColor, 32, true);
+	pSpiPanel->panelShowString(0, 60, "i love you0123456789", fontColor, backColor, 24, true);
+	pSpiPanel->panelShowString(0, 90, "LOVE 0123456789", fontColor, backColor, 32, true);
 
 	pSpiPanel->panelShowIntNum(10, 130, -9223372036854775807, fontColor, backColor, 16, true);
 	pSpiPanel->panelShowFloatNum(10, 150, -123456789.0123456, fontColor, backColor, 16, true);
-	pSpiPanel->panelShowChineseFont(10, 170, "��", fontColor, backColor, 12, true);
-	pSpiPanel->panelShowChineseFont(30, 170, "��", fontColor, backColor, 16, false);
-	pSpiPanel->panelShowChineseFont(50, 170, "԰", fontColor, backColor, 24, false);
-	pSpiPanel->panelShowChineseFont(80, 170, "��", fontColor, backColor, 32, true);
-	pSpiPanel->panelShowChineseText(120, 170, "�о�԰������", fontColor, backColor, 16, true);
 #endif
+
+	cout << "sizeof(\"中\") = " << sizeof("中") << endl;
+	pSpiPanel->panelShowChineseFont(10, 170, "我", fontColor, backColor, 12, true);
+	pSpiPanel->panelShowChineseFont(30, 170, "爱", fontColor, backColor, 16, false);
+	pSpiPanel->panelShowChineseFont(50, 170, "中", fontColor, backColor, 24, false);
+	pSpiPanel->panelShowChineseFont(80, 170, "华", fontColor, backColor, 32, true);
+	pSpiPanel->panelShowChineseText(120, 170, "我是中国人", fontColor, backColor, 24, true);
 	pSpiPanel->panelShowPicture(0, 200, 40, 40, pPicQQImage);
 
 	return 0;

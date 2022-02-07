@@ -1117,7 +1117,9 @@ int SpiPanel::panelShowChineseFont(unsigned short x, unsigned short y, const cha
 	{
 		bool bEqual = false;
 		pIndex = (char *)pFontArray + (i * stepSize);
-		bEqual = (*pIndex == *pFont) && (*(pIndex + 1) == *(pFont + 1));
+
+		// 对UTF8的汉字来说，会占用3个字节的存储空间，所以需要对3个字节都做判断，才能唯一确定汉子
+		bEqual = (*(pIndex + 0) == *(pFont + 0)) && (*(pIndex + 1) == *(pFont + 1)) && (*(pIndex + 2) == *(pFont + 2));
 		if(bEqual)
 		{
 			break;
@@ -1139,7 +1141,7 @@ int SpiPanel::panelShowChineseFont(unsigned short x, unsigned short y, const cha
 	unsigned short typefaceBytes;			// 一个汉字所占字节大小
 
 	xStart = x;								// 记录光标起始位置
-	pIndex += 3;							// 取模位置
+	pIndex += 4;							// 取模位置
 	typefaceBytes = (fontSize / 8 + ((fontSize % 8) ? 1 : 0)) * fontSize;
 	
 	//panelSetAddress(x, y, x + fontSize - 1, y + fontSize -1);
@@ -1199,7 +1201,7 @@ int SpiPanel::panelShowChineseText(unsigned short x, unsigned short y, const cha
 	while('\0' != *pText && '\0' != *(pText + 1))
 	{
 		panelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
-		pText += 2;
+		pText += 3;
 		x += fontSize;
 	}
 
