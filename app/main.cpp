@@ -30,8 +30,11 @@ using namespace std;
 int main(int argc, const char *argv[])
 {
 	AudioOut *pAudioOut = AudioOut::getInstance();
+	pAudioOut->setVolume(-20);
 	AudioPlayer *pAudioPlayer = AudioPlayer::getInstance();
-	pAudioPlayer->playPCM("/mnt/linux/Music/pcm_16000_16bit.pcm");
+	//pAudioPlayer->playPCM("/mnt/linux/Music/pcm_16000_16bit.pcm");
+	//pAudioPlayer->playWAV("/mnt/linux/Downloads/tiramisuV010/sourcecode/sdk/verify/mi_demo/source/audio/wav/16K_16bit_MONO_30s.wav");
+	pAudioPlayer->playWAV("/mnt/linux/Music/1234567890abcde.wav");
 
 	while(true)
 	{

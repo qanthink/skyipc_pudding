@@ -8,13 +8,14 @@ xxx版权所有。
 */
 
 #define RUNDE_LICENSE 0
-#define FREE_FRAME 999
+#define FREE_FRAME 100	// 100 -> 3s.
 
 #include "audio_player.h"
 
 #include <thread>
 #include <unistd.h>
 #include <fstream>
+#include <iomanip>
 #include <string.h>
 #include <iostream>
 
@@ -148,7 +149,7 @@ int AudioPlayer::thPlayRouteWAV(const char *filePath)
 
 /*
 	功能：	播放WAV 文件，内部实现。
-	返回：	0, 成功；-1, 参数无效；-2, 文明打开失败。
+	返回：	0, 成功；-1, 参数无效；-2, 文件打开失败；-3, 文件读取失败。
 	注意：	
 */
 int AudioPlayer::playRouteWAV(const char *filePath)
@@ -160,6 +161,7 @@ int AudioPlayer::playRouteWAV(const char *filePath)
 		return -1;
 	}
 
+	// 打开文件
 	ifstream ifs((const char *)filePath, ios::in);
 	if(ifs.fail())
 	{
@@ -168,35 +170,36 @@ int AudioPlayer::playRouteWAV(const char *filePath)
 	}
 	cout << "Success to open " << filePath << endl;
 
-	int readBytes = 0;
-	unsigned int dataBufMaxSize = 512;
-	//unsigned int dataBufMaxSize = 540;
-	//unsigned int dataBufMaxSize = 7170;
-	char dataBuf[dataBufMaxSize] = {0};
-	//unsigned int wavHeadBytes = 78;
-	unsigned int wavHeadBytes = 44;
+	// 获取WAV 头部字节数。
+	unsigned int wavHeaderBytes = 0;
+	wavHeaderBytes = getWavHeaderBytes(filePath);
+	cout << "Wav file header Bytes = " << wavHeaderBytes << endl;
 	
-	if(!ifs.eof())
+	int readBytes = 0;
+	unsigned int dataBufMaxSize = 1024 * 1;
+	char dataBuf[dataBufMaxSize] = {0};
+	
+	ifs.read(dataBuf, wavHeaderBytes);
+	if(!ifs)
 	{
-		ifs.read(dataBuf, wavHeadBytes);
-		if(!ifs)
-		{
-			cerr << "In AudioPlayer::playRouteWAV(): read fail." << endl;
-		}
+		cerr << "In AudioPlayer::playRouteWAV(): read fail." << endl;
+		ifs.close();
+		return -3;
 	}
 
+	// 跳过头部，循环读取音频正文。
 	int i = 0;
 	while(!ifs.eof())
 	{
-		//cout << "Ready to call read() in routeAo()." << endl;
 		ifs.read(dataBuf, dataBufMaxSize);
 		readBytes = ifs.gcount();
 		if(!ifs)
 		{
-			cout << "error: only " << readBytes << " could be read";
+			//cout << "error: only " << readBytes << " could be read";
+			cout << "read over." << endl;
 			break;
 		}
-		cout << "readBytes = " << readBytes << endl;
+		//cout << "readBytes = " << readBytes << endl;
 
 #if 0 == RUNDE_LICENSE
 		if(++i > FREE_FRAME)
@@ -205,16 +208,104 @@ int AudioPlayer::playRouteWAV(const char *filePath)
 		}
 #endif
 
-		//cout << "Send pcm stream" << endl;
 		AudioOut::getInstance()->sendStream(dataBuf, readBytes);
-		usleep(2000 * 1000);
 	}
-
 
 	ifs.close();
 
 	cout << "Call AudioPlayer::playRouteWAV() end." << endl;
 	return 0;
+}
+
+/*
+	功能：	获取WAV 头部信息字节数。
+	返回：	成功，返回头部信息的字节数；失败，返回0.
+	注意：	调用该函数统计头部信息字节数，从而可以跳过这些字节，读取音频正文数据。
+*/
+int AudioPlayer::getWavHeaderBytes(const char *filePath)
+{
+	cout << "Call AudioPlayer::getWavHeaderBytes()." << endl;
+	if(NULL == filePath)
+	{
+		cerr << "Fail to call AudioPlayer::getWavHeaderBytes(), argument has null value!" << endl;
+		return 0;
+	}
+	
+	ifstream ifs((const char *)filePath, ios::in);
+	if(ifs.fail())
+	{
+		cerr << "Fail to open file: " << filePath << ". " << strerror(errno) << endl;
+		return 0;
+	}
+
+	int headerBytes = 0;
+	unsigned readBytes = 0;
+	char dataBuf[sizeof(stWavFileHeader_t)] = {0};
+
+	// 读取WAV 头部信息。不包含'd', 'a', 't', 'a' 字段。
+	ifs.read(dataBuf, sizeof(stWavFileHeader_t));
+	readBytes = ifs.gcount();
+	if(!ifs)
+	{
+		cerr << "Fail to analyze wav file." << endl;
+		ifs.close();
+		return 0;
+	}
+
+	// 寻找'd', 'a', 't', 'a' 字段，每次偏移2 字节，读取4 字节。
+	const unsigned int dataLen = 4;
+	while(!ifs.eof())
+	{
+		memset(dataBuf, 0, dataLen);
+
+		readBytes += 4;
+		ifs.read(dataBuf, dataLen);
+		if('d' == dataBuf[0] && 'a' == dataBuf[1] && 't' == dataBuf[2] && 'a' == dataBuf[3])
+		{
+			cout << "Find format segment of 'data'" << endl;
+			cout << "This wav file has " << readBytes << " + 4 Bytes header data." << endl;
+			break;
+		}
+		//cout << dataBuf[0] << dataBuf[1] << dataBuf[2] << dataBuf[3] << endl;
+		
+		if(!ifs)
+		{
+			cerr << "Fail to call read() in AudioPlayer::getWavHeaderBytes()." << endl;
+			ifs.close();
+			return 0;
+		}
+
+		readBytes -= 2;
+		ifs.seekg(-2, ios::cur);
+	}
+
+	// 获取WAV 文件音频数据正文的长度。
+	readBytes += 4;
+	ifs.read(dataBuf, dataLen);
+	if(!ifs)
+	{
+		cerr << "Fail to call read() in AudioPlayer::getWavHeaderBytes()." << endl;
+		ifs.close();
+		return readBytes;
+	}
+	#if 0	// debug
+	cout << hex << setfill('0') << setw(2) << (int)dataBuf[0] << setw(2) << (int)dataBuf[1] 
+		<< setw(2) << (int)dataBuf[2] << setw(2) << (int)dataBuf[3] << endl;
+	cout << dec;
+	#endif
+
+	unsigned int realBytes = 0;
+	realBytes |= dataBuf[3];
+	realBytes <<= 8;
+	realBytes |= dataBuf[2];
+	realBytes <<= 8;
+	realBytes |= dataBuf[1];
+	realBytes <<= 8;
+	realBytes |= dataBuf[0];
+	cout << "This wav file has " << dec << realBytes << " Bytes audio data." << endl;
+
+	ifs.close();
+	return readBytes;
 }
 
 int readWavHead(const char *filePath)
@@ -503,6 +594,7 @@ int readWavHead(const char *filePath)
 	printf("\n");
 
 	fclose(fp);
-
+	
+	return 0;
 }
 
