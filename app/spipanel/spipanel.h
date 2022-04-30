@@ -18,9 +18,15 @@ sigma star版权所有。
 #include "picture.h"
 
 // Panel GPIO Operation
+#if 1	// pudding
 #define PANEL_GPIO_DC 	47	//数据与指令
 #define PANEL_GPIO_BLK 	108	//背光
 #define PANEL_GPIO_RES 	46	//复位
+#else	// ispahan
+#define PANEL_GPIO_DC 	63	//数据与指令
+#define PANEL_GPIO_BLK 	64	//背光
+#define PANEL_GPIO_RES 	62	//复位
+#endif
 
 #define USE_HORIZONTAL 	0	// 旋转0-1代表90°，2-3代表180°
 #define PANEL_WIDTH 	240

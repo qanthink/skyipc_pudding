@@ -203,6 +203,7 @@ int SpiPanel::spiDevRead(void *dataBuf, unsigned long dataBufLen)
 		.tx_buf = (unsigned long)NULL,
 		.rx_buf = (unsigned long)dataBuf,
 		.len = dataBufLen,
+		.speed_hz = 0,
 		.delay_usecs = 0,
 	};
 
@@ -239,6 +240,7 @@ int SpiPanel::spiDevWrite(const void *dataBuf, unsigned long dataBufLen)
 		.tx_buf = (unsigned long)dataBuf,
 		.rx_buf = (unsigned long)NULL,
 		.len = dataBufLen,
+		.speed_hz = 0,
 		.delay_usecs = 0,
 	};
 
@@ -289,7 +291,6 @@ int SpiPanel::gpioInit()
 	{
 		cerr << "Fail to call open(3) in SpiPanel::gpioInit(). errno = " 
 			<< errno << strerror(errno) << endl;
-		return -1;
 	}
 
 	sprintf(gpioFullPath, "%sgpio%u/value", gpioPathPrefix, PANEL_GPIO_BLK);
@@ -298,7 +299,6 @@ int SpiPanel::gpioInit()
 	{
 		cerr << "Fail to call open(3) in SpiPanel::gpioInit(). errno = " 
 			<< errno << strerror(errno) << endl;
-		return -1;
 	}
 
 	sprintf(gpioFullPath, "%sgpio%u/value", gpioPathPrefix, PANEL_GPIO_RES);
@@ -307,7 +307,6 @@ int SpiPanel::gpioInit()
 	{
 		cerr << "Fail to call open(3) in SpiPanel::gpioInit(). errno = " 
 			<< errno << strerror(errno) << endl;
-		return -1;
 	}
 
 	return 0;
