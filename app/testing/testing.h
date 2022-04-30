@@ -4,8 +4,7 @@ sigma star版权所有。
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#ifndef __TESTING_H__
-#define __TESTING_H__
+#pragma once
 
 #define USE_AI 0
 #define USE_AO 0
@@ -34,4 +33,3 @@ void stopVideo(unsigned char chn);
 void getNextViFrame(unsigned char chn);
 void changeBit(unsigned int bitrate, unsigned char);
 
-#endif

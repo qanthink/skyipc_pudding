@@ -1,63 +1,46 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#ifndef __AO_HPP__
-#define __AO_HPP__
+#pragma once
 
 #include "mi_ao.h"
-#include "pthread.h"
-#include "semaphore.h"
 
-class audioOut{
+class AudioOut{
 public:
-	static const unsigned audioBufLen = 4 * 1024;	// N * 1024 = N kb
-	typedef struct
-	{
-		MI_AUDIO_Frame_t stAudioFrame;
-		unsigned char audioBuf[audioBufLen];
-	}AudioOutFrame_t;
-
-	AudioOutFrame_t stAudioOutFrame;
-
-	int setPubAttr(MI_AUDIO_BitWidth_e eBitWidth, MI_AUDIO_SampleRate_e eSample);
+	static AudioOut *getInstance();			// 获取对象。
+	int sendStream(void *pDataBuf, const unsigned int dataLen);		// 送PCM 数据到AO 模块。
+	
 	int enable();
-	int disable();	
-	int sendStream(AudioOutFrame_t *pstAudioOutFrame);
-	int setVolume(int val);
+	int disable();
+
+	int enableDev();			// 使能设备
+	int disableDev();			// 禁用设备
 	
-	static audioOut *getInstance(){
-		static audioOut audioOut;
-		return &audioOut;
-	};
+	int enableChanel();			// 使能通道
+	int disableChanel();		// 禁用通道
+
+	int setPubAttr();			// 设置公共属性
 	
+	int setVolume(int val);	// 设置音量
+
 private:
-	sem_t sem0;
-	sem_t sem1;
-	MI_AUDIO_DEV audioDev;			// AO 设备号
-	MI_AO_CHN audioChn;				// 使能设备下的chanel
-	pthread_t streamRouteTid;		// 播放音频流线程的tid.
-	bool streamRouteRunning;		// stream 线程的运行状态。
-	// MI_AUDIO_Frame_t *pFrameData;	// 指向音频流的指针，会被MI_AO_SendFrame() 用到
-
 	// 单例模式需要将如下4个函数声明为private 的。
-	audioOut();
-	~audioOut();
-	audioOut(const audioOut&);
-	audioOut& operator=(const audioOut&);
-
-	// 类中创建线程，必须使用一个空格函数传递this 指针。
-	void *route(void *arg);
-	static void *__route(void *arg);
+	AudioOut();
+	~AudioOut();
+	AudioOut(const AudioOut&);
+	AudioOut& operator=(const AudioOut&);
 	
-	int enableDev();
-	int disableDev();
-	int enableChanel();
-	int disableChanel();
-	int streamRouteCreate();
-	int streamRouteDestroy();
+	bool bInitialized = false;
+	
+	const MI_AUDIO_DEV audioDev = 0;	// AO 设备号
+	const MI_AO_CHN audioChn = 0;		// AO 通道号
+	const MI_AUDIO_BitWidth_e eBitWidth = E_MI_AUDIO_BIT_WIDTH_16;		// 位宽
+	const MI_AUDIO_SampleRate_e eSample = E_MI_AUDIO_SAMPLE_RATE_16000;	// 采样率
+	const MI_AUDIO_SoundMode_e eSoundmode = E_MI_AUDIO_SOUND_MODE_MONO;	// 单声道和立体声。
+	const unsigned u32PtNumPerFrm = 128 * 1;	// 每帧的采样点个数。取值范围为：128, 128*2,…,128*n.
+	const unsigned int defVol = 1;				// 默认音量。
 };
 
-#endif

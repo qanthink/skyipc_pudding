@@ -1,58 +1,57 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
 #include "ao.hpp"
 #include "string.h"
 #include "iostream"
-#include "errno.h"
-//#include "unistd.h"
 
 using namespace std;
 
-audioOut::audioOut()
+AudioOut::AudioOut()
 {
-	audioDev = 0;	// 默认设备号为0
-	audioChn = 0;			// 默认chanel 号为0
-	//pFrameData = NULL;
-	streamRouteTid = -1;			// 未建立线程时tid 置-1.
-	streamRouteRunning = false;
-
 	enable();
 }
 
-audioOut::~audioOut()
+AudioOut::~AudioOut()
 {
 	disable();
-
-	audioDev = -1;
-	audioChn = -1;
-	//pFrameData = NULL;
-	streamRouteTid = -1;
-	streamRouteRunning = false;
 }
 
-int audioOut::enable()
+AudioOut* AudioOut::getInstance()
 {
-	setPubAttr(E_MI_AUDIO_BIT_WIDTH_16, E_MI_AUDIO_SAMPLE_RATE_16000);
-	enableDev();
-	enableChanel();
-	streamRouteCreate();
+	static AudioOut AudioOut;
+	return &AudioOut;
+};
 
+
+int AudioOut::enable()
+{
+	if(bInitialized)
+	{
+		cerr << "AO has been initialized. Don't repeat initialization." << endl;
+		return -1;
+	}
+
+	setPubAttr();
+	enableDev();
+	setVolume(defVol);
+	enableChanel();
+	
+	bInitialized = true;
 	return 0;
 }
 
-int audioOut::disable()
+int AudioOut::disable()
 {
-	streamRouteDestroy();
 	disableChanel();
 	disableDev();
+	bInitialized = false;
 
 	return 0;
 }
-
 
 /*
 eSamplerate	音频采样率。
@@ -81,34 +80,26 @@ MI_AUDIO_I2sConfig_t stI2sConfig;	设置I2S 工作属性
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::setPubAttr(MI_AUDIO_BitWidth_e eBitWidth, MI_AUDIO_SampleRate_e eSample)
+int AudioOut::setPubAttr()
 {
-	MI_AUDIO_Attr_t stAttr;
-	memset(&stAttr, 0, sizeof(MI_AUDIO_Attr_t));
+	MI_AUDIO_Attr_t stAoAttr;
+	memset(&stAoAttr, 0, sizeof(MI_AUDIO_Attr_t));
 
-	unsigned u32ChnCnt = 1;
-	unsigned u32PtNumPerFrm = 128 * 4;		// 每帧的采样点个数。取值范围为：128, 128*2,…,128*
+	stAoAttr.u32ChnCnt = 1;
+	stAoAttr.eSamplerate = eSample;
+	stAoAttr.eBitwidth = eBitWidth;
+	stAoAttr.eSoundmode = eSoundmode;
+	stAoAttr.u32PtNumPerFrm = u32PtNumPerFrm;
+	stAoAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_MASTER;
+	stAoAttr.WorkModeSetting.stI2sConfig.u32TdmSlots = 0;		// 不懂。
+	stAoAttr.WorkModeSetting.stI2sConfig.bSyncClock = FALSE;	// 不懂。
+	stAoAttr.WorkModeSetting.stI2sConfig.eI2sBitWidth = eBitWidth;
+	stAoAttr.WorkModeSetting.stI2sConfig.eMclk = E_MI_AUDIO_I2S_MCLK_0;
+	stAoAttr.WorkModeSetting.stI2sConfig.eFmt = E_MI_AUDIO_I2S_FMT_I2S_MSB;
 
-	stAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_MASTER;
-	stAttr.WorkModeSetting.stI2sConfig.bSyncClock = FALSE;
-	stAttr.WorkModeSetting.stI2sConfig.eFmt = E_MI_AUDIO_I2S_FMT_I2S_MSB;
-	stAttr.WorkModeSetting.stI2sConfig.eMclk = E_MI_AUDIO_I2S_MCLK_0;
-	stAttr.eBitwidth = eBitWidth;
-	stAttr.u32PtNumPerFrm = u32PtNumPerFrm;
-	stAttr.u32ChnCnt = u32ChnCnt;
-	stAttr.eSamplerate = eSample;
-	if(1 == u32ChnCnt)
-	{
-		stAttr.eSoundmode = E_MI_AUDIO_SOUND_MODE_MONO;
-	}
-	else if(2 == u32ChnCnt)
-	{
-		stAttr.eSoundmode = E_MI_AUDIO_SOUND_MODE_STEREO;
-	}
-
-	// MI_S32 MI_AO_SetPubAttr(MI_AUDIO_DEV AoDevId, MI_AUDIO_Attr_t *pstAttr);
+	// MI_S32 MI_AO_SetPubAttr(MI_AUDIO_DEV AoDevId, MI_AUDIO_Attr_t *pstAoAttr);
 	MI_S32 s32Ret = 0;
-	s32Ret = MI_AO_SetPubAttr(audioDev, &stAttr);  
+	s32Ret = MI_AO_SetPubAttr(audioDev, &stAoAttr);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_AO_SetPubAttr(). s32Ret = 0x" << hex << s32Ret << endl;
@@ -124,7 +115,7 @@ int audioOut::setPubAttr(MI_AUDIO_BitWidth_e eBitWidth, MI_AUDIO_SampleRate_e eS
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::enableDev()
+int AudioOut::enableDev()
 {	
 	// MI_S32 MI_AO_Enable(MI_AUDIO_DEV AoDevId);
 	MI_S32 s32Ret = 0;
@@ -144,7 +135,7 @@ int audioOut::enableDev()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::disableDev()
+int AudioOut::disableDev()
 {
 	// MI_S32 MI_AO_Disable(MI_AUDIO_DEV AoDevId);
 	MI_S32 s32Ret = 0;
@@ -165,7 +156,7 @@ int audioOut::disableDev()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::enableChanel()
+int AudioOut::enableChanel()
 {
 	// MI_S32 MI_AO_EnableChn(MI_AUDIO_DEV AoDevId, MI_AO_CHN AoChn);
 	MI_S32 s32Ret = 0;
@@ -185,7 +176,7 @@ int audioOut::enableChanel()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::disableChanel()
+int AudioOut::disableChanel()
 {
 	// MI_S32 MI_AO_EnableChn(MI_AUDIO_DEV AoDevId, MI_AO_CHN AoChn);
 	MI_S32 s32Ret = 0;
@@ -200,131 +191,37 @@ int audioOut::disableChanel()
 }
 
 /*-----------------------------------------------------------------------------
-描--述：处理音频流的线程函数。
+描--述：
 参--数：
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-void *audioOut::__route(void *arg)
+int AudioOut::sendStream(void *pDataBuf, const unsigned int dataLen)
 {
-	pthread_detach(pthread_self());
-
-	audioOut *pThis = (audioOut *)arg;
-	return pThis->route(NULL);
-}
-void *audioOut::route(void *arg)
-{
-	while(streamRouteTid)
-	{
-		sem_wait(&sem0);
-		
-		// MI_S32 MI_AO_SendFrame(MI_AUDIO_DEV AoDevId, MI_AO_CHN AoChn, MI_AUDIO_Frame_t *pstData, MI_S32 s32MilliSec);
-		MI_S32 s32Ret = -1;
-		s32Ret = MI_AO_SendFrame(audioDev, audioChn, &stAudioOutFrame.stAudioFrame, -1);
-		if(0 != s32Ret)
-		{
-			cerr << "Fail to call MI_AO_SendFrame(). s32Ret = 0x" << hex << s32Ret << endl;
-		}
-		memset(&stAudioOutFrame, 0, sizeof(AudioOutFrame_t));
-		sem_post(&sem1);
-	}
-	
-	return NULL;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：建立stream流线程。
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-int audioOut::streamRouteCreate()
-{
-	int ret = 0;
-	int initVal = 0;
-	bool bShared = false;
-	
-	ret = sem_init(&sem0, bShared, initVal);
-	if(0 != ret)
-	{
-		cerr << "Fail to call sem_init(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return ret;
-	}
-	cout << "Success to call sem_init(3)." << endl;
-
-	initVal = 1;
-	ret = sem_init(&sem1, bShared, initVal);
-	if(0 != ret)
-	{
-		cerr << "Fail to call sem_init(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return ret;
-	}
-	cout << "Success to call sem_init(3)." << endl;
-	
-	ret = pthread_create(&streamRouteTid, NULL, __route, this);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return ret;
-	}
-	cout << "Success to call pthread_create(3)." << endl;
-	
-	streamRouteTid = true;
-	return -1;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：结束stream流线程。
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-int audioOut::streamRouteDestroy()
-{
-	streamRouteTid = false;
-
-	if(-1 != streamRouteTid)
-	{
-		streamRouteTid = -1;
-	}
-
-	int ret = 0;
-	ret = sem_destroy(&sem0);
-	if(0 != ret)
-	{
-		cerr << "Fail to call sem_destroy(3), ret = " << ret << ". " << strerror(errno) << endl;
-	}
-	cout << "Success to call sem_destroy(3)." << endl;
-
-	ret = sem_destroy(&sem1);
-	if(0 != ret)
-	{
-		cerr << "Fail to call sem_destroy(3), ret = " << ret << ". " << strerror(errno) << endl;
-	}
-	cout << "Success to call sem_destroy(3)." << endl;
-	
-	return 0;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：结束stream流线程。
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-int audioOut::sendStream(AudioOutFrame_t *pstAudioOutFrame)
-{
-	if(NULL == pstAudioOutFrame)
+	if(NULL == pDataBuf)
 	{
 		cerr << "Fail to call sendStream(), argument has NULL value!" << endl;
 		return -1;
 	}
 
-	sem_wait(&sem1);
-	memcpy(&stAudioOutFrame, pstAudioOutFrame, sizeof(AudioOutFrame_t));
-	stAudioOutFrame.stAudioFrame.apVirAddr[0] = stAudioOutFrame.audioBuf;
-	stAudioOutFrame.stAudioFrame.apVirAddr[1] = NULL;
-	sem_post(&sem0);
+	MI_S32 s32Ret = 0;
+	MI_AUDIO_Frame_t stAudioFrame;
+	memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
+
+	stAudioFrame.apVirAddr[0] = pDataBuf;
+	stAudioFrame.u32Len = dataLen;
+	stAudioFrame.apSrcPcmVirAddr[0] = pDataBuf;
+	//stAudioFrame.u32SrcPcmLen[0] = 2 * 1024;
+	stAudioFrame.u32SrcPcmLen = dataLen;
+	stAudioFrame.eBitwidth = eBitWidth;
+	stAudioFrame.eSoundmode = eSoundmode;
+	
+	s32Ret = MI_AO_SendFrame(audioDev, audioChn, &stAudioFrame, 100);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_AO_SendFrame() in AudioOut::sendStream(). s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
 
 	return 0;
 }
@@ -335,19 +232,10 @@ int audioOut::sendStream(AudioOutFrame_t *pstAudioOutFrame)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int audioOut::setVolume(int val)
+int AudioOut::setVolume(int volumeDb)
 {
-	int valMin = -60;
-	int valMax = 30;
-	
-	if(val < valMin || val > valMax)
-	{
-		cerr << "Fail to call setVolume(), bad argument!" << endl;
-		cerr << "Volume range: [" << valMin << ", " << valMax << "]" << endl;
-	}
-
 	MI_S32 s32Ret = 0;
-	s32Ret = MI_AO_SetVolume(audioDev, val);
+	s32Ret = MI_AO_SetVolume(audioDev, volumeDb);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_AO_SetVolume()." << endl;

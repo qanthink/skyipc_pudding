@@ -23,12 +23,13 @@ link_directories(../thirdparty/libffmpeg/lib)
 add_subdirectory(aac)
 add_subdirectory(aad)
 add_subdirectory(live555rtsp)
-#add_subdirectory(system)
+add_subdirectory(system)
 #add_subdirectory(testing)
 #add_subdirectory(wifi)
 add_subdirectory(ffmpeg)
 add_subdirectory(queue)
 add_subdirectory(spipanel)
+add_subdirectory(audio_player)
 
 include_directories(
 	system/sensor
@@ -51,6 +52,7 @@ include_directories(
 	ffmpeg
 	queue
 	spipanel
+	audio_player
 )
 
 link_directories(
@@ -61,7 +63,7 @@ link_directories(
 		#	system/sys
 		#	system/rgn
 		#	system/audio_ai
-		#	system/audio_ao
+	system/audio_ao
 	system/ircut
 	avtp
 	live555rtsp
@@ -72,6 +74,7 @@ link_directories(
 	ffmpeg
 	queue
 	spipanel
+	audio_player
 )
 
 #增加需要编译的源文件
@@ -82,9 +85,17 @@ add_executable(skyipc ${DIR_SRC}) # 生成可执行文件
 
 #设置 target 需要链接的库
 target_link_libraries(skyipc 
-		#mi_sys libavtp.a libverify-uclibc-4.9.4.a sensor vif vpe venc sys ai ao ircut aac aad testing rgn wifi 
+		#mi_sys libavtp.a libverify-uclibc-4.9.4.a sensor vif 
+	vpe 
+	#venc 
+	sys 
+		#ai 
+	ao 
+	audio_player
+	#ircut aac aad testing rgn wifi 
 		live555rtsp 
 		ffmpeg queue
 		spipanel
+	pthread
 		)
 
