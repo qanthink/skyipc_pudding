@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------- 
-版权所有。
+qanthink 版权所有。
 作者：
 时间：2021.8.13
 ----------------------------------------------------------------*/
@@ -9,26 +9,23 @@
 本程序基于ffmpeg 开源代码进行开发，请遵守ffmpeg 开源规则。
 */
 
-#include "ffmpeg.h"
-#include "iostream"
-#include "errno.h"
-#include "limits.h"
-#include "unistd.h"
+#include "mp4container.h"
+#include <iostream>
 
 using namespace std;
 
-Ffmpeg* Ffmpeg::getInstance()
+Mp4Container* Mp4Container::getInstance()
 {
-	static Ffmpeg ffmpeg;
+	static Mp4Container ffmpeg;
 	return &ffmpeg;
 }
 
-Ffmpeg::Ffmpeg()
+Mp4Container::Mp4Container()
 {
 	enable();
 }
 
-Ffmpeg::~Ffmpeg()
+Mp4Container::~Mp4Container()
 {
 	disable();
 }
@@ -39,23 +36,19 @@ Ffmpeg::~Ffmpeg()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int Ffmpeg::enable()
+int Mp4Container::enable()
 {
-	cout << "Call Ffmpeg::enable()." << endl;
+	cout << "Call Mp4Container::enable()." << endl;
 
 	if(bEnable)
 	{
 		return 0;
 	}
 
-	setFrameQueueDepth(15);
-	setFileSavePath("/mnt/linux/Downloads/videotest");
-	setCodecpar(1920, 1080, 60);
-	setRecordSec(30.0);
-	streamRouteCreate();
+	pTh = make_shared<thread>(thRoute, this);
 	bEnable = true;
 
-	cout << "Call Ffmpeg::enable() end." << endl;
+	cout << "Call Mp4Container::enable() end." << endl;
 	return 0;
 }
 
@@ -65,14 +58,18 @@ int Ffmpeg::enable()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int Ffmpeg::disable()
+int Mp4Container::disable()
 {
-	cout << "Call Ffmpeg::disable()." << endl;
+	cout << "Call Mp4Container::disable()." << endl;
 
 	bEnable = false;
-	streamRouteDestroy();
+	if(NULL != pTh)
+	{
+		pTh->join();
+		pTh = NULL;
+	}
 	
-	cout << "Call Ffmpeg::disable() end." << endl;
+	cout << "Call Mp4Container::disable() end." << endl;
 	return 0;
 }
 
@@ -82,33 +79,12 @@ int Ffmpeg::disable()
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-int Ffmpeg::setFrameQueueDepth(const unsigned int queueDepth)
+void *Mp4Container::route(void *arg)
 {
-	cout << "Call Ffmpeg::createFrameBufQueue()." << endl;
-	int ret = 0;
-	ret == frameQueue.setQueueDepth(queueDepth);
-	if(0 != ret)
-	{
-		cerr << "Fail to call Ffmpeg::createFrameBufQueue()." << endl;
-		return ret;
-	}
+	//cout << "Call Mp4Container::route()" << endl;
 
-	cout << "Call Ffmpeg::createFrameBufQueue() end." << endl;
-	return queueDepth;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-void *Ffmpeg::route(void *arg)
-{
-	//cout << "Call Ffmpeg::route()" << endl;
-
-	bRouteRunning = true;
-	while(bEnable && bRouteRunning)
+	bRunning = true;
+	while(bEnable && bRunning)
 	{
 		/* 准备输出文件 */
 		const unsigned int fileNameSize = PATH_MAX;
@@ -179,27 +155,31 @@ void *Ffmpeg::route(void *arg)
 		double perFrameSeconds = (double)1 / outFPS;
 		cout << "perFrameSeconds = " << perFrameSeconds << endl;
 
+		#if 0
 		// 准备I帧。视频的第一帧必须为I帧。
 		Venc *pVenc = Venc::getInstance();
 		pVenc->requestIdr(Venc::vencMainChn, 1);
 		bool isFirstFrame = true;
+		#else
+		bool isFirstFrame = false;
+		#endif
 		
 		/* 循环获取编码器输出的数据，封装进容器 */
-		while(bEnable && bRouteRunning && (secCnt < recordSec))	// 秒计数器。
+		while(bEnable && bRunning && (secCnt < recordSec))	// 秒计数器。
 		{
-			Venc::stStreamPack_t stStreamPack = {0};
-			ret = recvH26xFrame(&stStreamPack);
-			if(0 != ret)
+			unique_lock<std::mutex> lock(mutex);
+			while(bRunning && 0 == mDataSize)		// mDataSize 为0 表示已经没有要处理的数据，通知生产者传递数据。
 			{
-				cerr << "Fail to call Ffmpeg::recvH26xFrame()." << endl;
-				continue;
+				cvConsume.wait(lock);
 			}
 
 			// 如果是视频文件的第一帧的话，必须是I帧。
 			if(isFirstFrame)
 			{
-				if(!isH265VPSFrame(stStreamPack.u8Pack, stStreamPack.u32Len))
+				if(!isH265VPSFrame(mDataBuf, mDataSize))
 				{
+					mDataSize = 0;
+					cvProduce.notify_one();
 					continue;
 				}
 				isFirstFrame = false;
@@ -209,7 +189,7 @@ void *Ffmpeg::route(void *arg)
 			cout << "In stream timebase.den = " << avInRational.den << ", .num = " << avInRational.num << endl;
 			cout << "Out stream timebase.den = " << avOutStream->time_base.den << ", .num = " << avOutStream->time_base.num << endl;
 			#endif
-			
+
 			// 将H.26X数据放入AVPACKET中，设置PTS/DTS/Duration.
 			AVPacket avPacket = {0};
 			avPacket.pts = av_rescale_q_rnd(pts, avInRational, avOutStream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
@@ -221,8 +201,8 @@ void *Ffmpeg::route(void *arg)
 			secCnt += perFrameSeconds;
 			//cout << "secCnt = " << secCnt << endl;
 			
-			avPacket.data = (uint8_t *)stStreamPack.u8Pack;
-			avPacket.size = stStreamPack.u32Len;
+			avPacket.data = (uint8_t *)mDataBuf;
+			avPacket.size = mDataSize;
 
 			#if 0	// debug
 			cout << "avPacket.size = " << avPacket.size << endl;
@@ -234,19 +214,27 @@ void *Ffmpeg::route(void *arg)
 			if(ret < 0)
 			{
 				cerr << "Fail to call av_interleaved_write_frame()." << endl;
-				av_packet_unref(&avPacket);
-				avio_closep(&avOutFmtCtx->pb);
-				avformat_free_context(avOutFmtCtx);
 			}
 			av_packet_unref(&avPacket);
+
+			mDataSize = 0;
+			cvProduce.notify_one();
 		}
 
-		av_write_trailer(avOutFmtCtx);
-		avio_closep(&avOutFmtCtx->pb);
-		avformat_free_context(avOutFmtCtx);
+		if(ret < 0)
+		{
+			avio_closep(&avOutFmtCtx->pb);
+			avformat_free_context(avOutFmtCtx);
+		}
+		else
+		{
+			av_write_trailer(avOutFmtCtx);
+			avio_closep(&avOutFmtCtx->pb);
+			avformat_free_context(avOutFmtCtx);
+		}
 	}
 
-	cout << "Call Ffmpeg::route() end." << endl;
+	cout << "Call Mp4Container::route() end." << endl;
 	return NULL;
 }
 
@@ -256,91 +244,13 @@ void *Ffmpeg::route(void *arg)
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/
-void *Ffmpeg::__route(void *arg)
+void *Mp4Container::thRoute(void *arg)
 {
-	pthread_detach(pthread_self());
-
-	Ffmpeg *pThis = (Ffmpeg *)arg;
+	Mp4Container *pThis = (Mp4Container *)arg;
 	return pThis->route(NULL);
 }
 
-int Ffmpeg::streamRouteCreate()
-{
-	int ret = 0;
-	int initVal = 0;
-	bool bShared = false;
-
-	ret = pthread_mutex_init(&mutex, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_init(3), ret = " << ret << ". " << endl;
-		return ret;
-	}
-	cout << "Success to call pthread_mutex_init(3)." << endl;
-
-	ret = pthread_cond_init(&cond, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_init(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Success to call pthread_cond_init(3)." << endl;
-	
-	ret = pthread_create(&routeTid, NULL, __route, this);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return ret;
-	}
-	cout << "Success to call pthread_create(3)." << endl;
-}
-
-int Ffmpeg::streamRouteDestroy()
-{
-	cout << "Call Ffmpeg::streamRouteDestroy()." << endl;
-	bRouteRunning = false;
-	usleep(100);
-
-	int ret = 0;	
-	ret = pthread_cond_broadcast(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_broadcast(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_cond_broadcast() end." << endl;
-	usleep(100);
-	
-	ret = pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_mutex_unlock() end." << endl;
-	
-	ret = pthread_mutex_destroy(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_destroy(3), ret = " << ret << ". " << endl;
-	}	
-	cout << "Call pthread_mutex_destroy() end." << endl;
-	
-	ret = pthread_cond_destroy(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_destroy(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_cond_destroy() end." << endl;
-	
-	if(-1 != routeTid)
-	{
-		routeTid = -1;
-	}
-
-	cout << "Call Ffmpeg::streamRouteDestroy() end." << endl;
-	return 0;
-}
-
-
-const char *Ffmpeg::setFileSavePath(const char *path)
+const char *Mp4Container::setFileSavePath(const char *path)
 {
 	const char *defaultPath = "/customer";
 	
@@ -363,7 +273,7 @@ const char *Ffmpeg::setFileSavePath(const char *path)
 	return defaultPath;
 }
 
-const char *Ffmpeg::getTimeString(char *timeStrBuf, const unsigned int timeStrSize)
+const char *Mp4Container::getTimeString(char *timeStrBuf, const unsigned int timeStrSize)
 {
 	time_t stTime = {0};
 	stTime = time(NULL);
@@ -389,11 +299,11 @@ const char *Ffmpeg::getTimeString(char *timeStrBuf, const unsigned int timeStrSi
 	return timeStrBuf;
 }
 
-const char *Ffmpeg::getFileFullName(char *fileNameBuf, const unsigned int fileNameSize)
+const char *Mp4Container::getFileFullName(char *fileNameBuf, const unsigned int fileNameSize)
 {
 	if(NULL == fileNameBuf || 0 == fileNameSize)
 	{
-		cerr << "Fail to call Ffmpeg::getFileFullName(). Point has null value or buff has zero length." << endl;
+		cerr << "Fail to call Mp4Container::getFileFullName(). Point has null value or buff has zero length." << endl;
 		return NULL;
 	}
 	
@@ -421,7 +331,7 @@ const char *Ffmpeg::getFileFullName(char *fileNameBuf, const unsigned int fileNa
 	return NULL;
 }
 
-int Ffmpeg::setCodecpar(unsigned int _width, unsigned int _height, unsigned int _outFPS)
+int Mp4Container::setCodecPar(unsigned int _width, unsigned int _height, unsigned int _outFPS)
 {
 	width = _width;
 	height = _height;
@@ -430,93 +340,31 @@ int Ffmpeg::setCodecpar(unsigned int _width, unsigned int _height, unsigned int 
 	return 0;
 }
 
-double Ffmpeg::setRecordSec(double _recordSec)
+double Mp4Container::setRecordSec(double _recordSec)
 {
 	recordSec = _recordSec;
 	return recordSec;
 }
 
-int Ffmpeg::sendH26xFrame(const Venc::stStreamPack_t *pstPacket)
+int Mp4Container::sendH26xFrame(const unsigned char*const dataBuff, const unsigned int dataSize)
 {
-	//cout << "Call Ffmpeg::sendH26xFrame()." << endl;
-	if(!bRouteRunning)
+	//cout << "Call Mp4Container::sendH26xFrame()." << endl;
+	if(!bRunning)
 	{
 		return -1;
 	}
 
-	int ret = 0;
-	ret= pthread_mutex_lock(&mutex);
-	if(0 != ret)
+	unique_lock<std::mutex> lock(mutex);
+	while(0 != mDataSize)			// mData 不为0, 表示ffmpeg 依然有未处理完的数据。
 	{
-		cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
+		cvProduce.wait(lock);
 	}
-	
-	frameQueue.push(pstPacket);
-	ret= pthread_cond_signal(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_signal(3), ret = " << ret << ". " << endl;
-	}
+	mDataBuf = dataBuff;
+	mDataSize = dataSize;
+	cvConsume.notify_one();
 
-	ret= pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-	}
-
-	//cout << "End of call Ffmpeg::sendH26xFrame()." << endl;	
+	//cout << "End of call Mp4Container::sendH26xFrame()." << endl;	
 	return 0;
-}
-
-int Ffmpeg::recvH26xFrame(Venc::stStreamPack_t *pstPacket)
-{
-	//cout << "Call Ffmpeg::recvH26xFrame()." << endl;
-	int ret = 0;
-	ret = pthread_mutex_lock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
-		return -1;
-	}
-	
-	while(frameQueue.isEmpty() && bRouteRunning)
-	{
-	
-		ret = pthread_cond_wait(&cond, &mutex);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pthread_cond_wait(3), ret = " << ret << ". " << endl;
-			pthread_mutex_unlock(&mutex);
-			return -1;
-		}
-	}
-
-	frameQueue.pop(pstPacket);
-	ret = pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return -1;
-	}
-
-	//cout << "End of call Ffmpeg::recvH26xFrame()." << endl;	
-	return 0;
-}
-
-int Ffmpeg::requestIDR()
-{
-	//cout << "Call Ffmpeg::requestIDR()." << endl;
-	
-	unsigned int u32Ret = 0;
-	Venc *pVenc = Venc::getInstance();
-	u32Ret = pVenc->requestIdr(Venc::vencMainChn, 1);
-	if(0 != u32Ret)
-	{
-		cerr << "Fail to call Venc::requestIdr(). u32Ret = " << u32Ret << endl;
-	}
-
-	//cout << "End of call Ffmpeg::requestIDR()." << endl;	
-	return u32Ret;
 }
 
 /*-----------------------------------------------------------------------------
@@ -537,11 +385,11 @@ int Ffmpeg::requestIDR()
 +------------ - +---------------- - +
 		一个VPS包含多个SPS, 一个SPS包含多个PPS.
 -----------------------------------------------------------------------------*/
-bool Ffmpeg::isH265VPSFrame(unsigned char *dataBuf, unsigned dataSize)
+bool Mp4Container::isH265VPSFrame(const unsigned char *dataBuf, unsigned dataSize)
 {
 	if(NULL == dataBuf || dataSize < 5)
 	{
-		cerr << "Fail to call Ffmpeg::isH265VPSFrame(). Pointer has null value or data size is less than 4." << endl;
+		cerr << "Fail to call Mp4Container::isH265VPSFrame(). Pointer has null value or data size is less than 4." << endl;
 		return false;
 	}
 
@@ -575,11 +423,11 @@ bool Ffmpeg::isH265VPSFrame(unsigned char *dataBuf, unsigned dataSize)
 	return isVPS;
 }
 
-bool Ffmpeg::isH265IDRFrame(unsigned char *dataBuf, unsigned dataSize)
+bool Mp4Container::isH265IDRFrame(const unsigned char *dataBuf, unsigned dataSize)
 {
 	if(NULL == dataBuf || dataSize < 5)
 	{
-		cerr << "Fail to call Ffmpeg::isH265IDRFrame(). Pointer has null value or data size is less than 4." << endl;
+		cerr << "Fail to call Mp4Container::isH265IDRFrame(). Pointer has null value or data size is less than 4." << endl;
 		return false;
 	}
 

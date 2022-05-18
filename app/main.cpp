@@ -20,7 +20,7 @@ sigma star鐗堟潈鎵鏈夈?浣滆咃細
 #include "testing.h"
 #include "ircut.h"
 #include "live555rtsp.h"
-#include "ffmpeg.h"
+//#include "ffmpeg.h"
 #include "queue.h"
 #include "spipanel.h"
 #include "audio_player.h"

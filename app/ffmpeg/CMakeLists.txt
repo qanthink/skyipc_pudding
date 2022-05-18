@@ -3,6 +3,7 @@ aux_source_directory(. DIR_APP_SRC)
 include_directories(
 	../queue
 	../system/venc
+	../../thirdparty/libffmpeg/include
 )
 
 add_library(ffmpeg ${DIR_APP_SRC})
@@ -11,7 +12,5 @@ add_library(ffmpeg ${DIR_APP_SRC})
 #target_link_libraries(ffmpeg avformat avcodec avfilter avutil swresample swscale queue venc)
 
 #2021.8.27 剪裁后
-target_link_libraries(ffmpeg avformat avcodec avutil queue 
-		#venc
-		)
+target_link_libraries(ffmpeg avformat avcodec swresample avutil)
 
