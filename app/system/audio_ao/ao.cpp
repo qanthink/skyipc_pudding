@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------- 
-xxx版权所有。
+qanthink 版权所有。
 作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
@@ -104,7 +104,7 @@ int AudioOut::setPubAttr()
 	{
 		cerr << "Fail to call MI_AO_SetPubAttr(). s32Ret = 0x" << hex << s32Ret << endl;
 	}
-	cout << "Success to call MI_AO_SetPubAttr()." << endl;
+	//cout << "Success to call MI_AO_SetPubAttr()." << endl;
 	
 	return s32Ret;
 }
@@ -124,7 +124,7 @@ int AudioOut::enableDev()
 	{
 		cerr << "Fail to call MI_AO_Enable(). s32Ret = 0x" << hex << s32Ret << endl;
 	}
-	cout << "Success to call MI_AO_Enable()." << endl;
+	//cout << "Success to call MI_AO_Enable()." << endl;
 	
 	return s32Ret;
 }
@@ -165,7 +165,7 @@ int AudioOut::enableChanel()
 	{
 		cerr << "Fail to call MI_AO_EnableChn(). s32Ret = 0x" << hex << s32Ret << endl;
 	}
-	cout << "Success to call MI_AO_EnableChn()." << endl;
+	//cout << "Success to call MI_AO_EnableChn()." << endl;
 
 	return s32Ret;
 }
@@ -209,10 +209,10 @@ int AudioOut::sendStream(void *pDataBuf, const unsigned int dataLen)
 	memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
 
 	stAudioFrame.apVirAddr[0] = pDataBuf;
-	stAudioFrame.u32Len = dataLen;
+	stAudioFrame.u32Len[0] = dataLen;
 	stAudioFrame.apSrcPcmVirAddr[0] = pDataBuf;
 	//stAudioFrame.u32SrcPcmLen[0] = 2 * 1024;
-	stAudioFrame.u32SrcPcmLen = dataLen;
+	stAudioFrame.u32SrcPcmLen[0] = dataLen;
 	stAudioFrame.eBitwidth = eBitWidth;
 	stAudioFrame.eSoundmode = eSoundmode;
 	
@@ -235,7 +235,8 @@ int AudioOut::sendStream(void *pDataBuf, const unsigned int dataLen)
 int AudioOut::setVolume(int volumeDb)
 {
 	MI_S32 s32Ret = 0;
-	s32Ret = MI_AO_SetVolume(audioDev, volumeDb);
+	MI_AO_GainFading_e eFading = E_MI_AO_GAIN_FADING_OFF;
+	s32Ret = MI_AO_SetVolume(audioDev, audioChn, volumeDb, eFading);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_AO_SetVolume()." << endl;
