@@ -209,10 +209,9 @@ int AudioOut::sendStream(void *pDataBuf, const unsigned int dataLen)
 	memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
 
 	stAudioFrame.apVirAddr[0] = pDataBuf;
-	stAudioFrame.u32Len[0] = dataLen;
+	stAudioFrame.u32Len = dataLen;
 	stAudioFrame.apSrcPcmVirAddr[0] = pDataBuf;
-	//stAudioFrame.u32SrcPcmLen[0] = 2 * 1024;
-	stAudioFrame.u32SrcPcmLen[0] = dataLen;
+	stAudioFrame.u32SrcPcmLen = dataLen;
 	stAudioFrame.eBitwidth = eBitWidth;
 	stAudioFrame.eSoundmode = eSoundmode;
 	
@@ -235,8 +234,7 @@ int AudioOut::sendStream(void *pDataBuf, const unsigned int dataLen)
 int AudioOut::setVolume(int volumeDb)
 {
 	MI_S32 s32Ret = 0;
-	MI_AO_GainFading_e eFading = E_MI_AO_GAIN_FADING_OFF;
-	s32Ret = MI_AO_SetVolume(audioDev, audioChn, volumeDb, eFading);
+	s32Ret = MI_AO_SetVolume(audioDev, volumeDb);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_AO_SetVolume()." << endl;
