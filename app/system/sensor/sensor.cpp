@@ -235,7 +235,7 @@ int Sensor::enable(MI_U32 u32Fps)
 	
 	setPlaneMode();
 	getRes();
-	setRes(0);
+	setRes(6);
 	//setFps(u32Fps);
 	sensorEnable();	
 	bEnable = true;

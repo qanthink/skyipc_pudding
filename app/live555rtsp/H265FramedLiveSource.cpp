@@ -1,7 +1,6 @@
 #include "H265FramedLiveSource.hh"
-#include "iostream"
 
-#include "venc.h"
+#include <iostream>
 #include "live555rtsp.h"
 
 using namespace std;
@@ -36,14 +35,15 @@ H265FramedLiveSource::~H265FramedLiveSource()
 	databufSize = 0;
 }
 
-static Venc::stStreamPack_t stStreamPack;
+const static unsigned int dataSize = 512 * 1024;		// n * 1024 = n KB.
+static unsigned char dataBuf[dataSize] = {0};
 
 void H265FramedLiveSource::doGetNextFrame()
 {
 	//cout << "Call H265FramedLiveSource::doGetNextFrame()." << endl;
 	
 	/* ---------------------------------------------------------------------------------
-	tips1: 从编码器获取H.264/H.265/MJPEG数据，并写入live555的底层数据区fTo, 长度信息写入fFramedSize;
+	tips1: 将H.26X 数据写入live555的底层数据区fTo, 将长度信息写入fFramedSize;
 	tips2: fTo的容量上限为fMaxSize, 若我们的数据超过fMaxSize, 则需要对fTo执行多次写操作。
 	tips3: 不可使用循环语句在一次doGetNextFrame()中完成tips2中提到的操作。
 			需要再多次doGetNextFrame()操作中完成。
@@ -57,21 +57,14 @@ void H265FramedLiveSource::doGetNextFrame()
 	fFrameSize = 0;
 	if(0 == (databufSize - readSize))
 	{
-		memset(&stStreamPack, 0, sizeof(Venc::stStreamPack_t));
+		//memset(&stStreamPack, 0, sizeof(stStreamPack_t));
 		
-		int ret = 0;
+		int recvSize = 0;
 		Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
-		ret = pLive555Rtsp->recvH26xFrame(&stStreamPack);
-		//Venc *pVenc = Venc::getInstance();
-		//pVenc->rcvStream(Venc::vencMainChn, &stStreamPack);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pLive555Rtsp->recvH26xFrame(&stStreamPack) in doGetNextFrame(), ret = " << ret << endl;
-			return;
-		}
+		recvSize = pLive555Rtsp->recvH26xFrame(dataBuf, dataSize);
 
 		readSize = 0;
-		databufSize = stStreamPack.u32Len;
+		databufSize = recvSize;
 		fFrameSize = 0;
 		fNumTruncatedBytes = 0;
 
@@ -83,7 +76,7 @@ void H265FramedLiveSource::doGetNextFrame()
 
 	if((databufSize - readSize) > fMaxSize)
 	{
-		//memcpy(fTo, stStreamPack.u8Pack + readSize, fMaxSize);
+		//memcpy(fTo, dataBuf + readSize, fMaxSize);
 		#if 1
 		fFrameSize = fMaxSize;
 		#else
@@ -95,7 +88,7 @@ void H265FramedLiveSource::doGetNextFrame()
 	}
 	else
 	{
-		memcpy(fTo, stStreamPack.u8Pack + readSize, databufSize - readSize);
+		memcpy(fTo, dataBuf + readSize, databufSize - readSize);
 		fFrameSize = databufSize - readSize;
 		readSize += (databufSize - readSize);
 		fNumTruncatedBytes = 0;

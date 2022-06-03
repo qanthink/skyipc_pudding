@@ -1,71 +1,84 @@
+/*---------------------------------------------------------------- 
+xxx版权所有。
+作者：
+时间：2020.7.10
+----------------------------------------------------------------*/
+
 #include "ircut.h"
+#include <thread>
 
-static void setGpioValue(char *port, char *value)
-{
-	char cmd[100] = {0};
-	sprintf(cmd, "echo %s > /sys/class/gpio/export", port);
-	system(cmd);
-
-	sprintf(cmd, "echo out > /sys/class/gpio/gpio%s/direction", port);
-	system(cmd);
-
-	sprintf(cmd, "echo %s >  /sys/class/gpio/gpio%s/value", value, port);
-	system(cmd);
-
-	sprintf(cmd, "echo %s > /sys/class/gpio/unexport", port);
-	system(cmd);
-}
+using namespace std;
 
 IrCut::IrCut()
 {
-
+	resetFilter();
 }
 
-IrCut* IrCut::getInstance()//获取GPIO对象指针
+IrCut::~IrCut()
+{
+}
+
+IrCut* IrCut::getInstance()
 {
 	static IrCut irCut;
 	return &irCut;
 }
 
-void IrCut::setGpio(int aInPoint, int bInPoint)
+bool IrCut::bOpened()
 {
-	IrCut_AIN_Point = aInPoint;
-	IrCut_BIN_Point = bInPoint;
+	return bOpen;
 }
 
-int IrCut::getStatus()//获取滤波片的开关状态
+int IrCut::openFilter()
 {
-	return status;
+	gpioSetVal(PIN_AIN, 1);
+	std::this_thread::sleep_for(std::chrono::microseconds(400 * 1000));
+	gpioSetVal(PIN_AIN, 0);
+	bOpen = true;
+
+	return 0;
 }
 
-void IrCut::openFilter()//打开滤波片  晚上要打开
+int IrCut::closeFilter()
 {
-	char pointA[10] = "";
-	sprintf(pointA, "%d", IrCut_AIN_Point);
-	setGpioValue(pointA, (char *)"1");
-	usleep(400000);
-	setGpioValue(pointA, (char *)"0");
-	if(-1 != status)
-		status = 1;
+	gpioSetVal(PIN_AIN, 0);
+	gpioSetVal(PIN_BIN, 1);
+	std::this_thread::sleep_for(std::chrono::microseconds(400 * 1000));
+	gpioSetVal(PIN_BIN, 0);
+	bOpen = false;
+
+	return 0;
 }
 
-void IrCut::closeFilter()//关闭滤波片 白天要关闭
-{
-	char pointA[10] = "";
-	sprintf(pointA, "%d", IrCut_AIN_Point);
-	char pointB[10] = "";
-	sprintf(pointB, "%d", IrCut_BIN_Point);
-	setGpioValue(pointA, (char *)"0");
-	setGpioValue(pointB, (char *)"1");
-	usleep(400000);
-	setGpioValue(pointB, (char *)"0");
-	if(-1 != status)
-		status = 0;
-}
-
-void IrCut::resetFilter()//刚开机的时候，打开并关闭滤波片
+int IrCut::resetFilter()
 {
 	openFilter();
 	closeFilter();
-	status = 0;
+	bOpen = false;
+
+	return 0;
 }
+
+int IrCut::gpioSetVal(unsigned int gpioIndex, unsigned int val)
+{
+	//cout << "Call IrCut::gpioSetVal()." << endl;
+
+	unsigned int cmdBufSizes = 128;
+	char cmdBuf[cmdBufSizes] = {0};
+	
+	sprintf(cmdBuf, "echo %d > /sys/class/gpio/export", gpioIndex);
+	system(cmdBuf);
+
+	sprintf(cmdBuf, "echo out > /sys/class/gpio/gpio%d/direction", gpioIndex);
+	system(cmdBuf);
+
+	sprintf(cmdBuf, "echo %d > /sys/class/gpio/gpio%d/value", val, gpioIndex);
+	system(cmdBuf);
+
+	sprintf(cmdBuf, "echo %d > /sys/class/gpio/unexport", gpioIndex);
+	system(cmdBuf);
+
+	//cout << "Call IrCut::gpioSetVal() end." << endl;
+	return 0;
+}
+

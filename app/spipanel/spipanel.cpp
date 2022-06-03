@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------- 
-版权所有。
+xxx版权所有。
 作者：
 时间：2021.8.13
 ----------------------------------------------------------------*/
@@ -11,10 +11,7 @@
 #include "spipanel.h"
 #include "lcdfont.h"
 
-#include <stdio.h>
 #include <iostream>
-#include <sstream>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -659,11 +656,11 @@ int SpiPanel::panelSetAddress(unsigned short x0, unsigned short y0, unsigned sho
 {
 	//cout << "Call SpiPanel::panelSetAddress()." << endl;
 
-	unsigned max = MAX((PANEL_WIDTH), (PANEL_HEIGHT));
+	unsigned max = SPIPANEL_MAX((PANEL_WIDTH), (PANEL_HEIGHT));
 	if(x0 > max || y0 > max || x1 > max || y1 > max)
 	{
-		cerr << "Fail to call SpiPanel::panelSetAddress(). Argument is out of range."
-			<< "x0, y0, x1, y1 = " << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
+		//cerr << "Fail to call SpiPanel::panelSetAddress(). Argument is out of range."
+		//	<< "x0, y0, x1, y1 = " << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
 		return -1;
 	}
 
@@ -727,7 +724,7 @@ int SpiPanel::panelFill(unsigned short x0, unsigned short y0, unsigned short x1,
 	cout << "Call SpiPanel::panelFill()." << endl;
 
 	unsigned short max = 0;
-	max = MAX((PANEL_WIDTH), (PANEL_HEIGHT));
+	max = SPIPANEL_MAX((PANEL_WIDTH), (PANEL_HEIGHT));
 
 	if(x0 > max || y0 > max || x1 > max || y1 > max)
 	{
@@ -751,6 +748,7 @@ int SpiPanel::panelFill(unsigned short x0, unsigned short y0, unsigned short x1,
 	}
 	
 	cout << "Call SpiPanel::panelFill() end." << endl;
+	return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -944,7 +942,7 @@ int SpiPanel::panelShowChar(unsigned short x, unsigned short y, unsigned char ch
 	ret = panelSetAddress(x, y, x + sizex - 1, y + sizey - 1);	// 设置光标位置
 	if(-1 == ret)
 	{
-		cerr << "Fail to call SpiPanel::panelShowChar()." << endl;
+		//cerr << "Fail to call SpiPanel::panelShowChar()." << endl;
 		return -1;
 	}
 	
@@ -1197,7 +1195,7 @@ int SpiPanel::panelShowChineseText(unsigned short x, unsigned short y, const cha
 		return -1;
 	}
 	
-	while('\0' != *pText && '\0' != *(pText + 1))
+	while('\0' != *pText && '\0' != *(pText + 1) && '\0' != *(pText + 2))
 	{
 		panelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
 		pText += 3;
@@ -1205,6 +1203,51 @@ int SpiPanel::panelShowChineseText(unsigned short x, unsigned short y, const cha
 	}
 
 	cout << "Call SpiPanel::panelShowChineseText() end." << endl;
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示文本，包含中英文+字符。
+参--数：x, y, 坐标；pText 指向要显示的文本；fc 字的颜色；bc 字的背景色；
+		fontSize 字号，12, 16, 24, 32; bCoverMode: false, 非叠加模式，true, 叠加模式
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int SpiPanel::panelShowText(unsigned short x, unsigned short y, const char *pText, unsigned short fc, unsigned short bc, unsigned char fontSize, unsigned char bCoverMode)
+{
+	cout << "Call SpiPanel::panelShowText()." << endl;
+
+	if(NULL == pText)
+	{
+		cerr << "Fail to call SpiPanel::panelShowText(). Argument has null value." << endl;
+		return -1;
+	}
+
+	while('\0' != *pText)
+	{
+		if(*pText >= 0x00 && *pText <= 0x7F)	// UTF8, 1个字节，ASIIC字符
+		{
+			panelShowChar(x, y, *pText, fc, bc, fontSize, bCoverMode);
+			pText++;
+			x += fontSize / 2;
+		}
+		else if(*pText >= 0xC2 && *pText <= 0xDF && '\0' != *(pText + 1))	// UTF8, 2个字节，拉丁文、希腊文等字符
+		{
+			//暂不支持。
+			//panelShowChar(x, y, *pText, fc, bc, fontSize, bCoverMode);
+			pText += 2;
+			x += fontSize / 2;
+		}
+		else if(*pText >= 0xE0 && *pText <= 0xEF && '\0' != *(pText + 1) && '\0' != *(pText + 2))	// UTF8, 3个字节，中日韩文等。
+		{
+			//cout << hex << (int)*pText << endl;
+			panelShowChineseFont(x, y, pText, fc, bc, fontSize, bCoverMode);
+			pText += 3;
+			x += fontSize;
+		}
+	}
+
+	cout << "Call SpiPanel::panelShowText() end." << endl;
 	return 0;
 }
 

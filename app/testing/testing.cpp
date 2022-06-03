@@ -12,7 +12,7 @@ sigma star版权所有。
 #include "testing.h"
 #include "iostream"
 #include "string.h"
-
+#include "ethernet.h"
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
@@ -21,9 +21,10 @@ sigma star版权所有。
 #include "rgn.h"
 #include "avtp.h"
 #include "wifi.h"
-#include "ffmpeg.h"
 #include "queue.h"
+#include "spipanel.h"
 #include "live555rtsp.h"
+#include "avtp_client.h"
 
 using namespace std;
 
@@ -161,17 +162,19 @@ void recvAudio(unsigned char *buf, unsigned short len)
 		decoderFrameInfo.bytesconsumed, decoderFrameInfo.channels, decoderFrameInfo.samples, decoderFrameInfo.samplerate);
 	#endif
 
+#if 0
 	// step2: 立体声转单声道，并用转换后的数据填充AO 结构体。
-	audioOut::AudioOutFrame_t stAOframe;
-	memset(&stAOframe, 0, sizeof(audioOut::AudioOutFrame_t));
+	AudioOut::AudioOutFrame_t stAOframe;
+	memset(&stAOframe, 0, sizeof(AudioOut::AudioOutFrame_t));
 
 	pAad->stereo2mono((unsigned char*)pcmBuf, decoderFrameInfo.samples * 2, stAOframe.audioBuf, NULL);
 	stAOframe.stAudioFrame.u32Len = decoderFrameInfo.samples;
 
 	// step3: 将AO 数据塞给AO 模块播放。
-	audioOut::getInstance()->sendStream(&stAOframe);
+	AudioOut::getInstance()->sendStream(&stAOframe);
 	//usleep(1 * 1000);		// 若不阻塞，存在AO 拿数据不及时，踩内存的现象。2020.7.15 15:00
 							// 2020.7.15 23:00 更新AO 模块，修复该问题。	
+#endif
 	return;
 }
 
@@ -253,47 +256,59 @@ void *routeAi(void *arg)
 void *routeAo(void *arg)
 {
 	if(NULL == arg)
-    {   
-        cerr << "Fail to call readPcmRoute(), argument has null value!" << endl;
-        return NULL;
-    }
+	{
+		cerr << "Fail to call readPcmRoute(), argument has null value!" << endl;
+		return NULL;
+	}
 
-    const char *filePath = (char *)arg;    
-    int fd = -1; 
-    fd = open(filePath, O_RDONLY);
-    if(-1 == fd) 
-    {   
-        cerr << "Fail to call open(2), " << strerror(errno) << endl;
-        return NULL;
-    }   
+	const char *filePath = (char *)arg;
+	int fd = -1; 
+	fd = open(filePath, O_RDONLY);
+	if(-1 == fd) 
+	{
+		cerr << "Fail to call open(2), " << strerror(errno) << endl;
+		return NULL;
+	}
 
-    do{ 
-        int ret = 0;
-		audioOut::AudioOutFrame_t stAOframe;
-		memset(&stAOframe, 0, sizeof(audioOut::AudioOutFrame_t));
+	cout << "Success to call open() in routeAo()." << endl;
 
-        ret = read(fd, stAOframe.audioBuf, audioOut::audioBufLen);
-        if(-1 == ret)
-        {   
-            cerr << "Fail to call read(2), " << strerror(errno) << endl;
-            break;
-        }   
-        else if(0 == ret)
-        {   
-            cout << "Read file over!" << endl;
-            break;
-        }
-        
-        stAOframe.stAudioFrame.u32Len = ret;
-        audioOut::getInstance()->sendStream(&stAOframe);
-        usleep(62 * 1000);  // 注意休眠时间，等待上一帧PCM 播放结束，再塞下一帧。
-    }while(g_bRunning);
+	const unsigned int dataSize = 2 * 1024;
+	char dataBuf[dataSize] = {0};
+	MI_AUDIO_Frame_t stAudioFrame;
+	stAudioFrame.apVirAddr[0] = dataBuf;
+	stAudioFrame.apSrcPcmVirAddr[0] = (void *)dataBuf;
+	stAudioFrame.eBitwidth = E_MI_AUDIO_BIT_WIDTH_16;
+	stAudioFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_MONO;
+	stAudioFrame.u32SrcPcmLen = 2 * 1024;
+	do{
+		int ret = 0;
+		//memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
+
+		cout << "Ready to call read() in routeAo()." << endl;
+		//ret = read(fd, stAudioFrame.apVirAddr[0], audioOut::frameMaxSize);
+		ret = read(fd, dataBuf, 2 * 1024);
+		if(-1 == ret)
+		{
+			cerr << "Fail to call read(2), " << strerror(errno) << endl;
+			break;
+		}
+		else if(0 == ret)
+		{
+			cout << "Read file over!" << endl;
+			break;
+		}
+
+		//cout << "Send pcm stream" << endl;
+		//stAudioFrame.u32Len = ret;
+		AudioOut::getInstance()->sendStream(dataBuf, ret);
+		usleep(62 * 1000);	// 注意休眠时间，等待上一帧PCM 播放结束，再塞下一帧。
+	}while(g_bRunning);
 
 	if(-1 != fd)
 	{
-	    close(fd);
-    	fd = -1;            
-    }
+		close(fd);
+		fd = -1;
+	}
 
 	return NULL;
 }
@@ -313,9 +328,9 @@ void *routeVideo(void *arg)
 		return NULL;
 	}
 
-	#if (1 == (SAVE_LOCAL_FILE))
+#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 	int fd = -1;
-	unsigned int uFrameCnt = 30 * 30;		// 写入文件的帧数。N * FPS = N秒。
+	unsigned int uFrameCnt = 10 * 30;		// 写入文件的帧数。N * FPS = N秒。
 	//const char *filePath = "/customer/video.265";
 	const char *filePath = "/mnt/linux/Downloads/video.265";
 	mode_t mode = 0766;
@@ -325,82 +340,101 @@ void *routeVideo(void *arg)
 	{
 		cerr << "Fail to open " << filePath << ", " << strerror(errno) << endl;
 	}
-	#endif
+#endif
+
+#if (1 == (USE_AVTP_VIDEO))
+	const unsigned int ipSize = 16;
+	char ipAddress[ipSize] = {0};
+	Ethernet *pEthernet = Ethernet::getInstance();
+	pEthernet->getInterfaceIP("eth0", ipAddress, ipSize);
+	cout << "Call pEthernet->getInterfaceIP();" << endl;
+	cout << "ipAddress = " << ipAddress << endl;
+	AvtpVideoClient avtpVideClient(ipAddress, "192.168.0.200");
+#endif
 	
 	while(g_bRunning)
 	{
 		MI_S32 s32Ret = 0;
-		Venc::stStreamPack_t stStreamPack;
-		memset(&stStreamPack, 0, sizeof(Venc::stStreamPack_t));
+		MI_VENC_Stream_t stStream;
 		Venc *pVenc = Venc::getInstance();
-		s32Ret = pVenc->rcvStream(u32VencChn, &stStreamPack);
+		s32Ret = pVenc->rcvStream(u32VencChn, &stStream);
 		if(0 != s32Ret)
 		{
 			cerr << "Fail to call pVenc->rcvStream(). s32Ret = " << s32Ret << endl;
 			continue;
 		}
-		else if(stStreamPack.u32Len >= Venc::u32PackMaxLen)
-		{
-			cerr << "stStreamPack.u32Len >= Venc::u32PackMaxLen" << endl;
-		}
 
-		//stStreamPack.u64PTS = 0;
-		
-		#if 0	//debug
+		int i = 0;		// 2020.7.22 增加for 循环，适配slice mode 下数据需要多片分发。
+		for(i = 0; i < stStream.u32PackCount; ++i)
 		{
-			cout << "stStreamPack.u32Len = " << stStreamPack.u32Len <<endl;
-			cout << "stStreamPack.u64PTS = " << stStreamPack.u64PTS << endl;
-			cout << endl;
-		}
-		#endif
-
-		int ret = 0;
-		#if (1 == (USE_FFMPEG))
-		Ffmpeg *pFfmpeg = Ffmpeg::getInstance();
-		ret = pFfmpeg->sendH26xFrame(&stStreamPack);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pFfmpeg->sendH26xFrame(). ret = " << ret << endl;
-		}
-		#endif
-
-		#if (1 == (TEST_RTSPSERVER_LIVESTREAM))
-		Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
-		//pLive555Rtsp->sendH26xFrame_block(&stStreamPack);
-		pLive555Rtsp->sendH26xFrame(&stStreamPack);
-		#endif
-		
-		#if (1 == (SAVE_LOCAL_FILE))
-		if(0 != uFrameCnt)
-		{
-			--uFrameCnt;
-			if(-1 != fd)
+			if(stStream.pstPack[i].u32Len > stStreamPack_t::u32PackMaxLen)
 			{
-				ret = write(fd, stStreamPack.u8Pack, stStreamPack.u32Len);
-				if(-1 == ret)
+				cerr << "stStream.pstPack[" << i << "].u32Len is out of range." << endl;
+				break;
+			}
+
+		#if 0	// debug
+			pVenc->printStreamInfo(&stStream);
+		#endif
+			
+		#if (1 == (USE_FFMPEG_SAVE_MP4))
+			Ffmpeg *pFfmpeg = Ffmpeg::getInstance();
+			s32Ret = pFfmpeg->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+			if(0 != s32Ret)
+			{
+				cerr << "Fail to call pFfmpeg->sendH26xFrame(). s32Ret = " << s32Ret << endl;
+			}
+		#endif
+
+		#if (1 == (USE_RTSPSERVER_LIVESTREAM))
+			Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
+			//pLive555Rtsp->sendH26xFrame_block(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+			pLive555Rtsp->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+		#endif
+			
+		#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
+			if(0 != uFrameCnt)
+			{
+				--uFrameCnt;
+				if(-1 != fd)
 				{
-					cerr << "Fail to call write(2), " << strerror(errno) << endl;
+					s32Ret = write(fd, stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+					if(-1 == s32Ret)
+					{
+						cerr << "Fail to call write(2), " << strerror(errno) << endl;
+					}
 				}
 			}
-		}
-		else
-		{
-			static bool bFirstLog = true;
-			bFirstLog ? ((bFirstLog = false) && (cout << "Write local H.26X file over. Close file." << endl)) : 0;
-			if(-1 != fd)
-			close(fd);
-			fd = -1;
-		}
+			else
+			{
+				if(-1 != fd)
+				{
+					close(fd);
+					fd = -1;
+					cout << "Write local H.26X file over. Close file." << endl;
+				}
+			}
 		#endif
+			
+		#if (1 == (USE_AVTP_VIDEO))
+			avtpVideClient.sendVideoFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+		#endif
+		}
+
+		s32Ret = pVenc->releaseStream(u32VencChn, &stStream);
+		if(0 != s32Ret)
+		{
+			cerr << "Fail to call Venc::releaseStream(), errno = " << s32Ret << endl;;
+		}
 	}
 
-	#if (1 == (SAVE_LOCAL_FILE))
+#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 	if(-1 != fd)
 	{
 		close(fd);
 		fd = -1;
 	}
-	#endif
+#endif
 
 	return NULL;
 }
@@ -476,5 +510,114 @@ void *routeOsd(void *arg)
 	}
 
 	return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：SPI PANEL 线程
+参--数：无
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+void *routeSpiPanel(void *arg)
+{
+	SpiPanel *pSpiPanel = SpiPanel::getInstance();
+	int fbColor = 0;
+	srand((unsigned)time(NULL));
+	fbColor = rand();
+
+	if(0)
+	{
+		pSpiPanel->panelFill(0, 0, PANEL_WIDTH, PANEL_HEIGHT, fbColor);
+	}
+	
+	unsigned int fontColor = 0xFFFF;
+	unsigned int backColor = 0x0000;
+	
+#if 0
+	pSpiPanel->panelDrawPoint(10, 10, fontColor);
+	pSpiPanel->panelDrawPoint(20, 10, fontColor);
+	pSpiPanel->panelDrawLine(30, 10, 50, 20, fontColor);
+	pSpiPanel->panelDrawRectangle(60, 10, 80, 20, fontColor);
+	pSpiPanel->panelDrawCircle(100, 20, 10, fontColor);
+	
+	pSpiPanel->panelShowChar(10, 30, 'a', fontColor, backColor, 12, true);
+	pSpiPanel->panelShowChar(30, 30, 'b', fontColor, backColor, 16, true);
+	pSpiPanel->panelShowChar(50, 30, 'C', fontColor, backColor, 24, true);
+	pSpiPanel->panelShowChar(80, 30, 'D', fontColor, backColor, 32, true);
+	
+	pSpiPanel->panelShowString(0, 60, "i love you0123456789", fontColor, backColor, 24, true);
+	pSpiPanel->panelShowString(0, 90, "LOVE 0123456789", fontColor, backColor, 32, true);
+
+	pSpiPanel->panelShowIntNum(10, 130, -9223372036854775807, fontColor, backColor, 16, true);
+	pSpiPanel->panelShowFloatNum(10, 150, -123456789.0123456, fontColor, backColor, 16, true);
+
+	cout << "sizeof(\"中\") = " << sizeof("中") << endl;
+	pSpiPanel->panelShowChineseFont(10, 170, "我", fontColor, backColor, 12, true);
+	pSpiPanel->panelShowChineseFont(30, 170, "爱", fontColor, backColor, 16, false);
+	pSpiPanel->panelShowChineseFont(50, 170, "中", fontColor, backColor, 24, false);
+	pSpiPanel->panelShowChineseFont(80, 170, "华", fontColor, backColor, 32, true);
+	pSpiPanel->panelShowChineseText(120, 170, "", fontColor, backColor, 24, true);
+	pSpiPanel->panelShowPicture(0, 200, 40, 40, pPicQQImage);
+
+	while(g_bRunning)
+	{
+		sleep(1);
+	}
+
+#endif
+	return NULL;
+}
+
+int testEthernet()
+{
+	const char *interface = NULL;;
+	const unsigned int ipBufLen = 128;
+	char ipBuf[ipBufLen] = {0};
+	
+	Ethernet *pEthernet = pEthernet->getInstance();
+	
+#if 1
+	interface = "lo";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+
+#if 1
+	interface = "eth0";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+
+#if 1
+	interface = "wlan0";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+
+#if 1
+	interface = "waln1";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+
+#if 1
+	interface = "br0";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+
+#if 1
+	interface = "mon.wlan1";
+	memset(ipBuf, 0, ipBufLen);
+	pEthernet->getInterfaceIP(interface, ipBuf, ipBufLen);
+	cout << interface << " IP: " << ipBuf << endl;
+#endif
+	
+	return -1;
 }
 

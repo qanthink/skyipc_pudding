@@ -18,10 +18,9 @@ MI_S32 MI_VIF_SetDev2SnrPadMux(MI_VIF_Dev2SnrPadMuxCfg_t *pstVifDevMap, MI_U8 u8
 MI_S32 MI_VIF_InitDev(MI_VIF_InitParam_t *pstInitParam);
 MI_S32 MI_VIF_DeInitDev(void);
 */
-	
-#ifndef __VIF_H__
-#define __VIF_H__
-	
+
+#pragma once
+
 #include "mi_vif.h"
 
 class Vif{
@@ -56,4 +55,3 @@ private:
 	MI_VIF_CHN u32VifChn;
 };
 
-#endif

@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：allen.li
+xxx版权所有。
+作者：
 时间：2020.7.15
 ----------------------------------------------------------------*/
 
@@ -55,22 +55,19 @@ sigma star版权所有。
 */
 
 #include "live555rtsp.h"
-#include "iostream"
-#include "venc.h"
+#include <iostream>
 
 using namespace std;
 
 Live555Rtsp::Live555Rtsp()
 {
 	enable();
-
 	bEnable = true;
 }
 
 Live555Rtsp::~Live555Rtsp()
 {
 	bEnable = false;
-	
 	disable();
 }
 
@@ -96,8 +93,13 @@ int Live555Rtsp::enable()
 {
 	cout << "Call Live555Rtsp::enable()." << endl;
 
-	setFrameQueueDepth(15);
-	createServerByLiveStream();
+	if(bEnable)
+	{
+		cerr << "Fail to call Live555Rtsp::enable(). Module has been initialized." << endl;
+		return -1;
+	}
+
+	pTh = make_shared<thread>(thRouteLiveStream, this);
 	bEnable = true;
 	
 	cout << "Call Live555Rtsp::enable() end." << endl;
@@ -114,7 +116,15 @@ int Live555Rtsp::disable()
 {
 	cout << "Call Live555Rtsp::disable()." << endl;
 
-	destroyLiveStreamServer();
+	
+	bRunning = false;
+	condVar.notify_all();
+	if(NULL != rtspServer)
+	{
+		cout << "close(RTSPServer)." << endl;
+		Medium::close(rtspServer);
+		rtspServer = NULL;
+	}
 	bEnable = false;
 
 	cout << "Call Live555Rtsp::disable() end." << endl;
@@ -137,159 +147,80 @@ void Live555Rtsp::announceStream(RTSPServer* rtspServer, ServerMediaSession* sms
 }
 
 /*-----------------------------------------------------------------------------
-描--述：
+描--述：显示RTSP流信息。
+参--数：rtspServer 指向RTSP服务器对象的指针；sms 指向会话的指针；streamName 流的名称
+返回值：无
+注--意：
+-----------------------------------------------------------------------------*/
+int Live555Rtsp::sendH26xFrame(const unsigned char *const dataBuff, const unsigned int dataSize)
+{
+	//cout << "Call Live555Rtsp::sendH26xFrame()." << endl;
+	if(!bRunning)
+	{
+		return -1;
+	}
+	
+	std::unique_lock<std::mutex> lock(mutex);
+	mDataBuff = dataBuff;
+	mDataSize = dataSize;
+	lock.unlock();
+	condVar.notify_one();
+
+	//cout << "End of call Live555Rtsp::sendH26xFrame()." << endl;	
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：显示RTSP流信息。
+参--数：rtspServer 指向RTSP服务器对象的指针；sms 指向会话的指针；streamName 流的名称
+返回值：无
+注--意：
+-----------------------------------------------------------------------------*/
+int Live555Rtsp::sendH26xFrame_block(const unsigned char *const dataBuff, const unsigned int dataSize)
+{
+	//cout << "Call Live555Rtsp::sendH26xFrame()." << endl;
+	if(!bRunning)
+	{
+		return -1;
+	}
+
+	std::unique_lock<std::mutex> lock(mutex);
+	while(bRunning && 0 != mDataSize)
+	{
+		condVar.wait(lock);
+	}
+	mDataBuff = dataBuff;
+	mDataSize = dataSize;
+	lock.unlock();
+	condVar.notify_one();
+
+	//cout << "End of call Live555Rtsp::sendH26xFrame()." << endl;	
+	return 0;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：live555Rtsp 获取H.26X 数据。
 参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-int Live555Rtsp::setFrameQueueDepth(const unsigned int queueDepth)
-{
-	cout << "Call Ffmpeg::createFrameBufQueue()." << endl;
-	int ret = 0;
-	ret == frameQueue.setQueueDepth(queueDepth);
-	if(0 != ret)
-	{
-		cerr << "Fail to call Ffmpeg::createFrameBufQueue()." << endl;
-		return ret;
-	}
-
-	cout << "Call Ffmpeg::createFrameBufQueue() end." << endl;
-	return queueDepth;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：显示RTSP流信息。
-参--数：rtspServer 指向RTSP服务器对象的指针；sms 指向会话的指针；streamName 流的名称
 返回值：无
 注--意：
 -----------------------------------------------------------------------------*/
-int Live555Rtsp::sendH26xFrame(const Venc::stStreamPack_t *pstPacket)
-{
-	//cout << "Call Live555Rtsp::sendH26xFrame()." << endl;
-	if(!bRouteRunning)
-	{
-		return -1;
-	}
-
-	int ret = 0;
-	ret= pthread_mutex_lock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
-	}
-	
-	frameQueue.push(pstPacket);
-	ret= pthread_cond_signal(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_signal(3), ret = " << ret << ". " << endl;
-	}
-
-	ret= pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-	}
-
-	//cout << "End of call Live555Rtsp::sendH26xFrame()." << endl;	
-	return 0;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：显示RTSP流信息。
-参--数：rtspServer 指向RTSP服务器对象的指针；sms 指向会话的指针；streamName 流的名称
-返回值：无
-注--意：
------------------------------------------------------------------------------*/
-int Live555Rtsp::sendH26xFrame_block(const Venc::stStreamPack_t *pstPacket)
-{
-	//cout << "Call Live555Rtsp::sendH26xFrame()." << endl;
-	if(!bRouteRunning)
-	{
-		return -1;
-	}
-
-	int ret = 0;
-	ret= pthread_mutex_lock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
-	}
-
-	while(frameQueue.isFull() && bRouteRunning)
-	{
-		ret= pthread_mutex_unlock(&mutex);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-		}
-		
-		usleep(1);
-
-		ret= pthread_mutex_lock(&mutex);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
-		}
-	}
-	
-	frameQueue.push(pstPacket);
-	ret= pthread_cond_signal(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_signal(3), ret = " << ret << ". " << endl;
-	}
-
-	ret= pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-	}
-
-	//cout << "End of call Live555Rtsp::sendH26xFrame()." << endl;	
-	return 0;
-}
-
-
-/*-----------------------------------------------------------------------------
-描--述：显示RTSP流信息。
-参--数：rtspServer 指向RTSP服务器对象的指针；sms 指向会话的指针；streamName 流的名称
-返回值：无
-注--意：
------------------------------------------------------------------------------*/
-int Live555Rtsp::recvH26xFrame(Venc::stStreamPack_t *pstPacket)
+int Live555Rtsp::recvH26xFrame(unsigned char *const dataBuff, const unsigned int dataSize)
 {
 	//cout << "Call Live555Rtsp::recvH26xFrame()." << endl;
-	int ret = 0;
-	ret = pthread_mutex_lock(&mutex);
-	if(0 != ret)
+	std::unique_lock<std::mutex> lock(mutex);
+	while(bRunning && 0 == mDataSize)
 	{
-		cerr << "Fail to call pthread_mutex_lock(3), ret = " << ret << ". " << endl;
-		return -1;
+		condVar.wait(lock);
 	}
-	//cout << "ready goto while()." << endl;
-	while(frameQueue.isEmpty() && bRouteRunning)
-	{
-		//cout << "in while()" << endl;
-		ret = pthread_cond_wait(&cond, &mutex);
-		if(0 != ret)
-		{
-			cerr << "Fail to call pthread_cond_wait(3), ret = " << ret << ". " << endl;
-			pthread_mutex_unlock(&mutex);
-			return -1;
-		}
-	}
-	//cout << "pop" << endl;
-	frameQueue.pop(pstPacket);
-	ret = pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << strerror(errno) << endl;
-		return -1;
-	}
+	
+	int realSize = 0;
+	realSize = (dataSize > mDataSize) ? mDataSize : dataSize;
+	memcpy(dataBuff, mDataBuff, realSize);
+	mDataSize = 0;
+	lock.unlock();
 
 	//cout << "End of call Live555Rtsp::recvH26xFrame()." << endl;	
-	return 0;
+	return realSize;
 }
 
 /*-----------------------------------------------------------------------------
@@ -314,7 +245,7 @@ void *createRtspServerBy265LocalFile(void *h265FilePath)
 	
 	// step3: 创建服务器会话，指定推流的文件，并添加视频子会话。
 	Boolean reuseFirstSource = false;
-	ServerMediaSession *sms = ServerMediaSession::createNew(*env, "main_stream");	// 注意第二个参数stream_name不要用大写字母。
+	ServerMediaSession *sms = ServerMediaSession::createNew(*env, "localfile");	// 注意第二个参数"localfile"不要用大写字母。
 	sms->addSubsession(H265VideoFileServerMediaSubsession::createNew(*env, (const char *)h265FilePath, reuseFirstSource));
 
 	// step4: 将会话加入RTPS Server.
@@ -331,110 +262,8 @@ void *createRtspServerBy265LocalFile(void *h265FilePath)
 返回值：无
 注--意：
 -----------------------------------------------------------------------------*/
-int Live555Rtsp::createServerByLiveStream()
+void *Live555Rtsp::thRouteLiveStream(void *arg)
 {
-	cout << "Call Live555Rtsp::createServerByLiveStream()." << endl;
-	
-	int ret = 0;
-	ret = pthread_mutex_init(&mutex, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_init(3), errno = " << ret << strerror(ret) << endl;
-		return ret;
-	}
-	cout << "Success to call pthread_mutex_init(3)." << endl;
-	
-	ret = pthread_cond_init(&cond, NULL);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_init(3), errno = " << ret << strerror(ret) << endl;
-		return ret;
-	}
-	cout << "Success to call pthread_cond_init(3)." << endl;
-	
-	ret = pthread_create(&tid, NULL, __routeLiveStream, this);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_create(3), errno = " << errno << strerror(errno) << endl;
-		tid = -1;
-		return ret;
-	}
-	cout << "Success to call pthread_create(3). Create rtsp server." << endl;
-	
-	cout << "Call Live555Rtsp::createServerByLiveStream() end." << endl;
-	return ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：无
-注--意：
------------------------------------------------------------------------------*/
-int Live555Rtsp::destroyLiveStreamServer()
-{
-	cout << "Call Live555Rtsp::destroyLiveStreamServer()." << endl;
-	
-	if(!bRouteRunning)
-	{
-		return -1;
-	}
-	bRouteRunning = false;
-	usleep(100);
-	
-	int ret = 0;
-	ret = pthread_cond_broadcast(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_broadcast(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_cond_broadcast() end." << endl;
-	usleep(100);
-	
-	ret = pthread_mutex_unlock(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_unlock(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_mutex_unlock() end." << endl;
-	
-	ret = pthread_mutex_destroy(&mutex);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_mutex_destroy(3), ret = " << ret << ". " << endl;
-	}	
-	cout << "Call pthread_mutex_destroy() end." << endl;
-	
-	ret = pthread_cond_destroy(&cond);
-	if(0 != ret)
-	{
-		cerr << "Fail to call pthread_cond_destroy(3), ret = " << ret << ". " << endl;
-	}
-	cout << "Call pthread_cond_destroy() end." << endl;
-
-	if(NULL != rtspServer)
-	{
-		cout << "close(RTSPServer)." << endl;
-		Medium::close(rtspServer);
-		rtspServer = NULL;
-	}
-	
-	tid = -1;
-	
-	cout << "Call Live555Rtsp::destroyLiveStreamServer() end." << endl;
-	return 0;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：无
-注--意：
------------------------------------------------------------------------------*/
-void *Live555Rtsp::__routeLiveStream(void *arg)
-{
-	pthread_detach(pthread_self());
-
 	Live555Rtsp *pThis = (Live555Rtsp *)arg;
 	return pThis->routeLiveStream(NULL);
 }
@@ -447,6 +276,8 @@ void *Live555Rtsp::__routeLiveStream(void *arg)
 -----------------------------------------------------------------------------*/
 void *Live555Rtsp::routeLiveStream(void *arg)
 {
+	bRunning = true;
+
 	cout << "Call Live555Rtsp::routeLiveStream()." << endl;
 	OutPacketBuffer::maxSize = 128 * 1024;	// for debug
 	
@@ -497,8 +328,8 @@ void *Live555Rtsp::routeLiveStream(void *arg)
 -----------------------------------------------------------------------------*/
 void Live555Rtsp::doEventLoop(BasicTaskScheduler0 *Basicscheduler)
 {
-	bRouteRunning = true;
-	while(bRouteRunning)
+	bRunning = true;
+	while(bRunning)
 	{
 		Basicscheduler->SingleStep();
 	}

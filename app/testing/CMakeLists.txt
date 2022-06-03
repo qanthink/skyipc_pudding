@@ -16,6 +16,9 @@ include_directories(
 	../ffmpeg
 	../queue
 	../live555rtsp
+	../spipanel
+	../ethernet
+	../sky_avtp
 )
 
 target_link_libraries(testing aac aad ai ao)

@@ -24,12 +24,14 @@ add_subdirectory(aac)
 add_subdirectory(aad)
 add_subdirectory(live555rtsp)
 add_subdirectory(system)
-#add_subdirectory(testing)
+add_subdirectory(testing)
 #add_subdirectory(wifi)
 add_subdirectory(ffmpeg)
 add_subdirectory(queue)
-add_subdirectory(spipanel)
 add_subdirectory(audio_player)
+add_subdirectory(spipanel)
+add_subdirectory(ethernet)
+add_subdirectory(sky_avtp)
 
 include_directories(
 	system/sensor
@@ -51,30 +53,34 @@ include_directories(
 	wifi/include
 	ffmpeg
 	queue
-	spipanel
 	audio_player
+	spipanel
+	ethernet
+	sky_avtp
 )
 
 link_directories(
-		#	system/sensor
-		#	system/vif
-		#	system/vpe
-		#	system/venc
-		#	system/sys
-		#	system/rgn
-		#	system/audio_ai
+	system/sensor
+	system/vif
+	system/vpe
+	system/venc
+	system/sys
+	system/rgn
+	system/audio_ai
 	system/audio_ao
 	system/ircut
 	avtp
 	live555rtsp
-	#	testing
-	#	wifi
-	#	wifi/lib/${tools}
+	testing
+	#wifi
+	#wifi/lib/${tools}
 	../thirdparty/live555/lib
 	ffmpeg
 	queue
-	spipanel
 	audio_player
+	spipanel
+	ethernet
+	sky_avtp
 )
 
 #增加需要编译的源文件
@@ -85,17 +91,24 @@ add_executable(skyipc ${DIR_SRC}) # 生成可执行文件
 
 #设置 target 需要链接的库
 target_link_libraries(skyipc 
-		#mi_sys libavtp.a libverify-uclibc-4.9.4.a sensor vif 
-	vpe 
-	#venc 
-	sys 
-		#ai 
-	ao 
+	testing
+	sensor vif vpe venc sys rgn ircut
+	ai ao aac aad
 	audio_player
-	#ircut aac aad testing rgn wifi 
-		live555rtsp 
-		ffmpeg queue
-		spipanel
-	pthread
-		)
+	#wifi
+	live555rtsp 
+	ffmpeg
+	spipanel 
+	ethernet
+	sky_avtp
+	pthread dl 
+)
+
+#strip 剪裁
+add_custom_target(stripTask
+    COMMAND echo ================ make strip task ================
+    COMMAND ls -l -h skyipc
+    COMMAND ${CMAKE_STRIP} -s skyipc
+    COMMAND ls -l -h skyipc
+)
 
