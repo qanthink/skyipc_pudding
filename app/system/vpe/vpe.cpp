@@ -1,20 +1,19 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
 #include "mi_sys.h"
 #include "vpe.h"
-#include "iostream"
-#include "string.h"
 #include "sensor.hpp"
+#include <iostream>
+#include <string.h>
 
 using namespace std;
 
 Vpe::Vpe()
 {
-	vpeCh = 0;
 	bEnable = false;
 
 	enable();
@@ -25,7 +24,6 @@ Vpe::~Vpe()
 	disable();
 	
 	bEnable = false;
-	vpeCh = 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -56,8 +54,8 @@ MI_S32 Vpe::enable()
 		return 0;
 	}
 
-	setChannelParam();
 	createChannel();
+	setChannelParam();
 	startChannel();
 
 	bEnable = true;
@@ -139,7 +137,7 @@ MI_S32 Vpe::createChannel()
 	MI_SNR_PlaneInfo_t stPlaneInfo;
 	memset(&stPlaneInfo, 0, sizeof(MI_SNR_PlaneInfo_t ));	
 	Sensor *pSensor = Sensor::getInstance();
-	s32Ret = pSensor->getPlaneInfo(&stPlaneInfo);
+	s32Ret = pSensor->getPlaneInfo(E_MI_SNR_PAD_ID_0, &stPlaneInfo);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call pSensor->getPlaneInfo(), errno = " << s32Ret << endl;
@@ -147,7 +145,6 @@ MI_S32 Vpe::createChannel()
 	}
 
 	// step2: 用sensor 相关信息填充VPE 通道属性结构体。
-	// MI_S32 MI_VPE_CreateChannel(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelAttr_t *pstVpeChAttr);
 	MI_VPE_ChannelAttr_t stVpeChAttr;
 	memset(&stVpeChAttr, 0, sizeof(MI_VPE_ChannelAttr_t));
 	stVpeChAttr.u16MaxW = stPlaneInfo.stCapRect.u16Width;
@@ -159,9 +156,9 @@ MI_S32 Vpe::createChannel()
 	stVpeChAttr.bUvInvert = FALSE;
 	stVpeChAttr.ePixFmt = (MI_SYS_PixelFormat_e)RGB_BAYER_PIXEL(stPlaneInfo.ePixPrecision, stPlaneInfo.eBayerId);
 	stVpeChAttr.eRunningMode = E_MI_VPE_RUN_REALTIME_MODE;
-	stVpeChAttr.bRotation = FALSE;
+	//stVpeChAttr.bRotation = FALSE;
 	stVpeChAttr.eHDRType = E_MI_VPE_HDR_TYPE_OFF;
-	//stVpeChAttr.eSensorBindId = E_MI_VPE_SENSOR0;	// 争议：sensor0 or sensor_invalid
+	stVpeChAttr.eSensorBindId = E_MI_VPE_SENSOR0;	// 争议：sensor0 or sensor_invalid
 	//stVpeChAttr.u32ChnPortMode = pstChannelInfo->u32ChnPortMode;
 	
 	// step3: 创建VPE 通道。	
@@ -194,62 +191,6 @@ MI_S32 Vpe::destroyChannel()
 	}
 
 	cout << "Call Vpe::destroyChannel() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：获取通道属性。
-参--数：pstVpeChAttr 指向通道属性的结构体指针。
-返回值：传递非法参数，返回-1; 成功，返回0; 失败，返回错误码。
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getChannelAttr(MI_VPE_ChannelAttr_t *pstVpeChAttr)
-{
-	cout << "Call Vpe::getChannelAttr()." << endl;
-
-	if(NULL == pstVpeChAttr)
-	{
-		cerr << "Fail to call Vpe::getChannelAttr(), argument has null value!" << endl;
-		return -1;
-	}
-
-	// MI_S32 MI_VPE_GetChannelAttr(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelAttr_t *pstVpeChAttr);
-	MI_S32 s32Ret = 0;
-	s32Ret = MI_VPE_GetChannelAttr(vpeCh, pstVpeChAttr);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call getChannelAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getChannelAttr() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置通道属性。
-参--数：pstVpeChAttr 指向通道属性的结构体指针。
-返回值：传递非法参数，返回-1; 成功，返回0; 失败，返回错误码。
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setChannelAttr(MI_VPE_ChannelAttr_t *pstVpeChAttr)
-{
-	cout << "Call Vpe::setChannelAttr()." << endl;
-
-	if(NULL == pstVpeChAttr)
-	{
-		cerr << "Fail to call Vpe::setChannelAttr(), argument has null value!" << endl;
-		return -1;
-	}
-
-	// MI_S32 MI_VPE_SetChannelAttr(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelAttr_t *pstVpeChAttr);
-	MI_S32 s32Ret = 0;
-	s32Ret = MI_VPE_SetChannelAttr(vpeCh, pstVpeChAttr);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_SetChannelAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::setChannelAttr() end." << endl;
 	return s32Ret;
 }
 
@@ -294,163 +235,6 @@ MI_S32 Vpe::stopChannel()
 	}
 
 	cout << "Call Vpe::stopChannel() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置通道参数。
-参--数：无
-返回值：成功，返回0; 失败，返回-1.
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setChannelParam()
-{
-	cout << "Call Vpe::setChannelParam()." << endl;
-
-	// MI_S32 MI_VPE_SetChannelParam(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelPara_t *pstVpeParam);
-	MI_VPE_ChannelPara_t stVpeChParam;
-	memset(&stVpeChParam, 0, sizeof(MI_VPE_ChannelPara_t));
-	//stVpeChParam.bFlip = FALSE;
-	//stVpeChParam.bMirror = FALSE;
-	stVpeChParam.eHDRType = E_MI_VPE_HDR_TYPE_OFF;
-	stVpeChParam.e3DNRLevel = E_MI_VPE_3DNR_LEVEL_OFF;
-	
-	MI_S32 s32Ret = 0;
-	s32Ret = MI_VPE_SetChannelParam(vpeCh, &stVpeChParam);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_SetChannelParam(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::setChannelParam() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：获取通道参数。
-参--数：pstVpeParam 指向通道参数的结构体指针。
-返回值：传递非法参数，返回-1; 成功，返回0; 失败，返回-1.
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getChannelParam(MI_VPE_ChannelPara_t *pstVpeParam)
-{
-	cout << "Call Vpe::getChannelParam()." << endl;
-
-	if(NULL == pstVpeParam)
-	{
-		cerr << "Fail to call Vpe::getChannelParam(), argument has null value!" << endl;
-		return -1;
-	}
-
-	// MI_S32 MI_VPE_GetChannelParam(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelPara_t *pstVpeParam);
-	MI_S32 s32Ret = 0;
-	s32Ret = MI_VPE_GetChannelParam(vpeCh, pstVpeParam);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_GetChannelParam(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getChannelParam() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setChannelCrop()
-{
-	cout << "Call Vpe::setChannelCrop()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call setChannelCrop(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::setChannelCrop() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getChannelCrop(MI_SYS_WindowRect_t *pstCropInfo)
-{
-	cout << "Call Vpe::getChannelCrop()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call getChannelCrop(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getChannelCrop() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getChannelRegionLuma(MI_VPE_RegionInfo_t *pstRegionInfo, MI_U32 *pu32LumaData, MI_S32 s32MilliSec)
-{
-	cout << "Call Vpe::getChannelRegionLuma()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call getChannelRegionLuma(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getChannelRegionLuma() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setChannelRotation(MI_SYS_Rotate_e eType)
-{
-	cout << "Call Vpe::setChannelRotation()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call setChannelRotation(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::setChannelRotation() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getChannelRotation(MI_SYS_Rotate_e *pType)
-{
-	cout << "Call Vpe::getChannelRotation()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call getChannelRotation(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getChannelRotation() end." << endl;
 	return s32Ret;
 }
 
@@ -532,7 +316,7 @@ MI_S32 Vpe::setPortMode(MI_VPE_PORT vpePort, MI_VPE_PortMode_t *pstVpeMode)
 		MI_SNR_PlaneInfo_t stSnrPlaneInfo;
 		memset(&stSnrPlaneInfo, 0, sizeof(&stSnrPlaneInfo));
 		Sensor *pSensor = Sensor::getInstance();
-		s32Ret = pSensor->getPlaneInfo(&stSnrPlaneInfo);
+		s32Ret = pSensor->getPlaneInfo(E_MI_SNR_PAD_ID_0, &stSnrPlaneInfo);
 		if(0 != s32Ret)
 		{
 			cerr << "Fail to call pSensor->getPlaneInfo(), errno = " << s32Ret << endl;
@@ -560,274 +344,34 @@ MI_S32 Vpe::setPortMode(MI_VPE_PORT vpePort, MI_VPE_PortMode_t *pstVpeMode)
 }
 
 /*-----------------------------------------------------------------------------
-描--述：获取VPE 端口模式。
-参--数：vpePort 端口号; pstVpeMode 指向端口模式的结构体指针。
-返回值：传递非法参数返回-1, 成功返回0; 失败返回错误码。
+描--述：设置通道参数。
+参--数：无
+返回值：成功，返回0; 失败，返回-1.
 注--意：
 -----------------------------------------------------------------------------*/
-MI_S32 Vpe::getPortMode(MI_VPE_PORT vpePort, MI_VPE_PortMode_t *pstVpeMode)
+MI_S32 Vpe::setChannelParam()
 {
-	cout << "Call Vpe::getPortMode()." << endl;
+	cout << "Call Vpe::setChannelParam()." << endl;
 
-	if(NULL == pstVpeMode)
-	{
-		cerr << "Fail to call Vpe::getPortMode(), argument has null value!" << endl;
-		return -1;
-	}
-	else if(vpePort > u32MaxVpePortID)
-	{
-		cerr << "Fail to call Vpe::setPortMode(), max port ID is " << \
-				u32MaxVpePortID << ", your port value is " << vpePort << endl;
-		return -1;
-	}
-
-	// MI_S32 MI_VPE_GetPortMode(MI_VPE_CHANNEL VpeCh, MI_VPE_PORT VpePort, MI_VPE_PortMode_t *pstVpeMode);
-	MI_S32 s32Ret = 0;
-	s32Ret = MI_VPE_GetPortMode(vpeCh, vpePort, pstVpeMode);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_GetPortMode(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getPortMode() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置输出端口图像剪裁信息。
-参--数：vpePort 端口号; pstOutCropInfo 指向输出端口剪裁信息结构体的指针。
-返回值：传递非法参数返回-1; 成功返回0, 失败返回错误码。
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setPortCrop(MI_VPE_PORT vpePort, MI_SYS_WindowRect_t *pstOutCropInfo)
-{
-	cout << "Call Vpe::setPortCrop()." << endl;
-
-	if(NULL == pstOutCropInfo)
-	{
-		cerr << "Fail to call Vpe::setPortCrop(), argument has null value!" << endl;
-		return -1;
-	}
-
-	if(vpePort > u32MaxVpePortID)
-	{
-		cerr << "Fail to call Vpe::setPortCrop(), invalid port ID." << endl;
-		return -1;
-	}
-	
-	// MI_S32 MI_VPE_SetPortCrop(MI_VPE_CHANNEL VpeCh, MI_VPE_PORT VpePort, MI_SYS_WindowRect_t *pstOutCropInfo);
-	MI_S32 s32Ret = 0;
-	#if 0
-	MI_SYS_WindowRect_t stOutCropInfo;
-	stOutCropInfo.u16X = 0;
-	stOutCropInfo.u16Y = 0;
-	stOutCropInfo.u16Width = 0;
-	stOutCropInfo.u16Height = 0;
-	s32Ret = MI_VPE_SetPortCrop(vpeCh, vpePort, &stOutCropInfo);
-	#else
-	s32Ret = MI_VPE_SetPortCrop(vpeCh, vpePort, pstOutCropInfo);
-	#endif
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_SetPortCrop(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::setPortCrop() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：获取输出端口图像剪裁信息。
-参--数：vpePort 端口号; pstOutCropInfo 指向输出端口剪裁信息结构体的指针。
-返回值：传递非法参数返回-1; 成功返回0; 失败返回错误码。
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getPortCrop(MI_VPE_PORT vpePort, MI_SYS_WindowRect_t *pstOutCropInfo)
-{
-	cout << "Call Vpe::getPortCrop()." << endl;
-
-	if(NULL == pstOutCropInfo)
-	{
-		cerr << "Fail to call Vpe::getPortCrop(), argument has null value!" << endl;
-		return -1;
-	}
-
-	if(vpePort > u32MaxVpePortID)
-	{
-		cerr << "Fail to call Vpe::getPortCrop(), invalid port ID!" << endl;
-		return -1;
-	}
-	// MI_S32 MI_VPE_GetPortCrop(MI_VPE_CHANNEL VpeCh, MI_VPE_PORT VpePort, MI_SYS_WindowRect_t *pstOutCropInfo);
-	MI_S32 s32Ret = 0;	
-	s32Ret = MI_VPE_GetPortCrop(vpeCh, vpePort, pstOutCropInfo);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VPE_GetPortCrop(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getPortCrop() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置端口显示位置。
-参--数：
-返回值：
-注--意：不理解这个函数的功能合作用。
------------------------------------------------------------------------------*/
-MI_S32 Vpe::setPortShowPosition(MI_SYS_WindowRect_t *pstPortPositionInfo)
-{
-	cout << "Call Vpe::setPortShowPosition()." << endl;
+	// MI_S32 MI_VPE_SetChannelParam(MI_VPE_CHANNEL VpeCh, MI_VPE_ChannelPara_t *pstVpeParam);
+	MI_VPE_ChannelPara_t stVpeChParam;
+	memset(&stVpeChParam, 0, sizeof(MI_VPE_ChannelPara_t));
+	stVpeChParam.bFlip = FALSE;
+	stVpeChParam.bMirror = FALSE;
+	stVpeChParam.eHDRType = E_MI_VPE_HDR_TYPE_OFF;
+	stVpeChParam.e3DNRLevel = E_MI_VPE_3DNR_LEVEL_OFF;
 
 	MI_S32 s32Ret = 0;
+	s32Ret = MI_VPE_SetChannelParam(vpeCh, &stVpeChParam);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call setPortShowPosition(), errno = " << s32Ret << endl;
+		cerr << "Fail to call MI_VPE_SetChannelParam(), errno = " << s32Ret << endl;
 	}
 
-	cout << "Call Vpe::setPortShowPosition() end." << endl;
+	cout << "Call Vpe::setChannelParam() end." << endl;
 	return s32Ret;
 }
 
-/*-----------------------------------------------------------------------------
-描--述：获取端口显示位置。
-参--数：
-返回值：
-注--意：不理解这个函数的功能合作用。
------------------------------------------------------------------------------*/
-MI_S32 Vpe::getPortShowPosition(MI_SYS_WindowRect_t *pstPortPositionInfo)
-{
-	cout << "Call Vpe::getPortShowPosition()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call getPortShowPosition(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::getPortShowPosition() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置跳过frame 的数量。
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::skipFrame(MI_VPE_PORT vpePort, MI_U32 u32FrameNum)
-{
-	cout << "Call Vpe::skipFrame()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call skipFrame(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::skipFrame() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::LDCBegViewConfig()
-{
-	cout << "Call Vpe::LDCBegViewConfig()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call LDCBegViewConfig(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::LDCBegViewConfig() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::LDCEndViewConfig()
-{
-	cout << "Call Vpe::LDCEndViewConfig()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call LDCEndViewConfig(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::LDCEndViewConfig() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::LDCSetViewConfig(void *pConfigAddr, MI_U32 u32ConfigSize)
-{
-	cout << "Call Vpe::LDCSetViewConfig()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call LDCSetViewConfig(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::LDCSetViewConfig() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::alloc_IspDataBuf(MI_U32 u32Size,void **pUserVirAddr)
-{
-	cout << "Call Vpe::alloc_IspDataBuf()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call alloc_IspDataBuf(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::alloc_IspDataBuf() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vpe::free_IspDataBuf(void *pUserBuf)
-{
-	cout << "Call Vpe::free_IspDataBuf()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call free_IspDataBuf(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vpe::free_IspDataBuf() end." << endl;
-	return s32Ret;
-}
 
 /*-----------------------------------------------------------------------------
 描--述：设置主码流端口模式
@@ -844,7 +388,7 @@ MI_S32 Vpe::createMainPort(MI_VPE_PORT vpePort)
 	MI_SNR_PlaneInfo_t stSnrPlaneInfo;
 	memset(&stSnrPlaneInfo, 0, sizeof(&stSnrPlaneInfo));
 	Sensor *pSensor = Sensor::getInstance();
-	s32Ret = pSensor->getPlaneInfo(&stSnrPlaneInfo);
+	s32Ret = pSensor->getPlaneInfo(E_MI_SNR_PAD_ID_0, &stSnrPlaneInfo);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call pSensor->getPlaneInfo(), errno = " << s32Ret << endl;
@@ -868,7 +412,7 @@ MI_S32 Vpe::createMainPort(MI_VPE_PORT vpePort)
 		cerr << "Fail to call setPortMode(), errno = " << s32Ret << endl;
 	}
 
-	s32Ret = setChnOutputPortDepth(vpePort, 0, 5);
+	s32Ret = setChnOutputPortDepth(vpePort, 0, 2);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call setChnOutputPortDepth(), errno = " << s32Ret << endl;

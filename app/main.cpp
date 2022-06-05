@@ -47,7 +47,7 @@ int main(int argc, const char *argv[])
 	Sys *pSys = Sys::getInstance();
 	// 出图模块初始化。数据流向：sensor -> vif -> vpe -> venc -> 应用处理。
 	Sensor *pSensor = Sensor::getInstance();// sensor 初始化
-	pSensor->setFps(20);
+	pSensor->setFps(30);
 	Vif *pVif = Vif::getInstance();			// VIF 初始化
 	Vpe *pVpe = Vpe::getInstance();			// VPE 初始化
 	pVpe->createMainPort(Vpe::vpeMainPort);	// 创建VPE 主码流

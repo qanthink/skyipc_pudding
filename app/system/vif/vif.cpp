@@ -1,33 +1,25 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#include "vif.h"
-#include "iostream"
-#include "string.h"
-#include "sensor.hpp"
 #include "sys.h"
+#include "vif.h"
+#include "sensor.hpp"
+#include <iostream>
+#include <string.h>
 
 using namespace std;
 
 Vif::Vif()
 {
-	u32VifDev = 0;
-	u32VifChn = 0;
-	bEnable = false;
-	
 	enable();
 }
 
 Vif::~Vif()
 {
 	disable();
-	
-	bEnable = false;	
-	u32VifChn = 0;
-	u32VifDev = 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -79,8 +71,7 @@ MI_S32 Vif::disable()
 {
 	cout << "Call Vif::disable()." << endl;
 
-	disableChnPort(1);
-	disableChnPort(0);
+	disableChnPort(vifPort);
 	disableDev();
 	bEnable = false;
 
@@ -105,7 +96,7 @@ MI_S32 Vif::setDevAttr()
 	memset(&stPadInfo, 0, sizeof(MI_SNR_PADInfo_t));
 	
 	Sensor *pSensor = Sensor::getInstance();
-	s32Ret = pSensor->getPadInfo(&stPadInfo);
+	s32Ret = pSensor->getPadInfo(E_MI_SNR_PAD_ID_0, &stPadInfo);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call pSensor->getPadInfo()." << endl;
@@ -121,6 +112,7 @@ MI_S32 Vif::setDevAttr()
 	stDevAttr.eHDRType = E_MI_VIF_HDR_TYPE_OFF;				// 参考mi_demo/jedi/rtsp/st_main_rtsp.c
 	stDevAttr.eBitOrder = E_MI_VIF_BITORDER_NORMAL;
 	stDevAttr.eWorkMode = E_MI_VIF_WORK_MODE_RGB_REALTIME;	// 参考mi_demo/jedi/internal/vif/st_vif.c
+	//stDevAttr.eWorkMode = E_MI_VIF_WORK_MODE_RGB_FRAMEMODE;	// 参考mi_demo/jedi/internal/vif/st_vif.c
 	
 	if(E_MI_VIF_MODE_BT656 == stDevAttr.eIntfMode)
 	{
@@ -133,6 +125,7 @@ MI_S32 Vif::setDevAttr()
 	
 	if(E_MI_VIF_MODE_MIPI == stDevAttr.eIntfMode)
 	{
+		cout << "E_MI_VIF_MODE_MIPI == stDevAttr.eIntfMode" << endl;
 		stDevAttr.eDataSeq = stPadInfo.unIntfAttr.stMipiAttr.eDataYUVOrder;
 	}
 	else
@@ -153,36 +146,6 @@ MI_S32 Vif::setDevAttr()
 	}
 
 	cout << "Call Vif::setDevAttr() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::getDevAttr(MI_VIF_DevAttr_t *pstDevAttr)
-{
-	cout << "Call Vif::getDevAttr()." << endl;
-
-	if(NULL == pstDevAttr)
-	{
-		cerr << "Fail to call Vif::getDevAttr(), argument has null value." << endl;
-		return 0;
-	}
-	
-	//MI_S32 MI_VIF_GetDevAttr(MI_VIF_DEV u32VifDev, MI_VIF_DevAttr_t *pstDevAttr);
-	MI_S32 s32Ret = 0;
-
-	memset(pstDevAttr, 0, sizeof(MI_VIF_DevAttr_t));
-	s32Ret = MI_VIF_GetDevAttr(u32VifDev, pstDevAttr);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_GetDevAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vif::getDevAttr() end." << endl;
 	return s32Ret;
 }
 
@@ -250,7 +213,7 @@ MI_S32 Vif::setChnPortAttr(MI_VIF_PORT u32ChnPort)
 	memset(&stPlaneInfo, 0, sizeof(MI_SNR_PlaneInfo_t));
 	
 	Sensor *pSensor = Sensor::getInstance();
-	s32Ret = pSensor->getPlaneInfo(&stPlaneInfo);
+	s32Ret = pSensor->getPlaneInfo(E_MI_SNR_PAD_ID_0, &stPlaneInfo);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call pSensor->getPlaneInfo()." << endl;
@@ -258,7 +221,7 @@ MI_S32 Vif::setChnPortAttr(MI_VIF_PORT u32ChnPort)
 	}
 
 	// step2: 获取VIF 模块属性信息。
-	// step3: 根据sensor 和VIF 信息填充VIF 频道端口属性结构体。
+	// step3: 根据sensor 和VIF 信息填充VIF 通道端口属性结构体。
 	MI_VIF_ChnPortAttr_t stChnPortAttr;
 	memset(&stChnPortAttr, 0, sizeof(MI_VIF_ChnPortAttr_t));
 	
@@ -268,7 +231,6 @@ MI_S32 Vif::setChnPortAttr(MI_VIF_PORT u32ChnPort)
 	stChnPortAttr.stCapRect.u16Height = stPlaneInfo.stCapRect.u16Height;
 	stChnPortAttr.stDestSize.u16Width = stPlaneInfo.stCapRect.u16Width;
 	stChnPortAttr.stDestSize.u16Height = stPlaneInfo.stCapRect.u16Height;
-	stChnPortAttr.eCapSel = E_MI_SYS_FIELDTYPE_BOTH;
 
 	MI_U32 u32IsInterlace = 0;
 	if(u32IsInterlace)
@@ -286,7 +248,7 @@ MI_S32 Vif::setChnPortAttr(MI_VIF_PORT u32ChnPort)
 	
 	stChnPortAttr.eFrameRate = E_MI_VIF_FRAMERATE_FULL;
 
-	// step4: 设置VIF 频道端口属性。
+	// step4: 设置VIF 通道端口属性。
 	s32Ret = MI_VIF_SetChnPortAttr(u32VifChn, u32ChnPort, &stChnPortAttr);
 	if(0 != s32Ret)
 	{
@@ -294,26 +256,6 @@ MI_S32 Vif::setChnPortAttr(MI_VIF_PORT u32ChnPort)
 	}
 	
 	cout << "Call Vif::setChnPortAttr() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::getChnPortAttr(MI_VIF_PORT u32ChnPort)
-{
-	cout << "Call Vif::getChnPortAttr()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vif::getChnPortAttr() end." << endl;
 	return s32Ret;
 }
 
@@ -368,86 +310,6 @@ MI_S32 Vif::disableChnPort(MI_VIF_PORT u32ChnPort)
 	}
 
 	cout << "Call Vif::disableChnPort() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::query()
-{
-	cout << "Call Vif::query()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vif::query() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::setDev2SnrPadMux()
-{
-	cout << "Call Vif::setDev2SnrPadMux()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
-	}
-	
-	cout << "Call Vif::setDev2SnrPadMux() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::initDev()
-{
-	cout << "Call Vif::initDev()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vif::initDev() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：
-参--数：
-返回值：
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Vif::deInitDev()
-{
-	cout << "Call Vif::deInitDev()." << endl;
-
-	MI_S32 s32Ret = 0;
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Vif::deInitDev() end." << endl;
 	return s32Ret;
 }
 

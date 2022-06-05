@@ -1,23 +1,16 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#ifndef __SENSOR_HPP__
-#define __SENSOR_HPP__
-
-/* 单例方法：
-1.构造函数、析构函数、拷贝构造函数、赋值运算符的重载函数，四个函数声明为私有。
-2.其中，拷贝构造函数、赋值运算的重载函数，只声明不定义。
-3.实例的唯一接口函数声明为static 类型，public的，返回static 修饰的类对象的指针。
+/*
+	调用方法：
+	Sensor *pSensor = Sensor::getInstance();
+	pSensor->setFps(30);
 */
 
-/* Sensor 流程：
-MI_SNR_SetPlaneMode -> MI_SNR_SetRes ->	MI_SNR_SetFps/MI_SNR_SetOrien -> MI_SNR_Enable
-
-需要关注：sensor 的FPS.
-*/
+#pragma once
 
 #include "mi_sensor.h"
 
@@ -28,21 +21,14 @@ public:
 		return &sensor;
 	}
 
-	int getFps(MI_U32 *pFps);
-	int setFps(MI_U32 u32Fps);
-	int queryResCount(MI_U32 *pu32ResCount);
-	int getRes();
-	int setRes(MI_U8 u8ResIdx);
-	int sensorEnable();
-	int sensorDisable();
-	int enable(MI_U32 u32Fps = 30);
-	int disable();
-	int getPadInfo(MI_SNR_PADInfo_t *pstPadInfo);
-	int setPadInfo();
-	int getPlaneInfo(MI_SNR_PlaneInfo_t *pstPlaneInfo);
-	int setPlaneInfo();
-	int getPlaneMode();
-	int setPlaneMode();
+	int enable();									// 启用sensor
+	int disable();									// 禁用sensor
+
+	int getFps(MI_U32 *u32Fps);						// 获取帧率
+	int setFps(MI_U32 u32Fps);						// 设置帧率
+
+	int getPadInfo(MI_SNR_PAD_ID_e ePADId, MI_SNR_PADInfo_t *pstPadInfo);				// 获取sensor 设备信息
+	int getPlaneInfo(MI_SNR_PAD_ID_e ePADId, MI_SNR_PlaneInfo_t *pstPlaneInfo);	// 获取sensor 通道信息
 	
 private:
 	Sensor();
@@ -50,10 +36,16 @@ private:
 	Sensor(const Sensor&);
 	Sensor& operator=(const Sensor&);
 
-	MI_SNR_PAD_ID_e ePADId;
-	MI_U32 u32PlaneID;
-	MI_U32 u32ResCnt;
-	bool bEnable;
+	bool bEnable = false;
+
+	/*	与sensor 的配置相关，同一颗sensor 可能出不同配置。
+		例如IMX415 可以出：3840x2160@30fps; 2560x1440@30fps; 1920x1080@60fps; */
+	MI_U32 u32ResCnt = 0;
+	const static MI_U8 u8SnrResIndex = 5;
+	
+	const static MI_U32 u32DefFps = 30;
+	const static MI_U32 u32PlaneID = 0;
+	const static MI_BOOL bEnableHDR = false;
+	const static MI_SNR_PAD_ID_e ePADId = E_MI_SNR_PAD_ID_0;
 };
 
-#endif
