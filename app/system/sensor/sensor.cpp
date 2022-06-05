@@ -80,12 +80,12 @@ int Sensor::enable()
 	#endif
 
 	// 设置配置
+	cout << "In Sensor::enable(), u8SnrResIndex = " << (int)u8SnrResIndex << endl;
 	s32Ret = MI_SNR_SetRes(ePADId, u8SnrResIndex);	// 单sensor 方案中，一般使用0 配置。
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_SNR_SetPlaneMode(), errno = " << s32Ret << endl;
 	}
-	cout << "In Sensor::enable(), u8SnrResIndex = " << u8SnrResIndex << endl;
 
 	// 设置帧率。
 	s32Ret = MI_SNR_SetFps(ePADId, u32DefFps);

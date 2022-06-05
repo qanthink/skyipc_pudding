@@ -9,6 +9,7 @@ sigma star鐗堟潈鎵鏈夈?浣滆咃細
 #include "sensor.hpp"
 #include "vif.h"
 #include "vpe.h"
+#include "divp.h"
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
@@ -47,7 +48,7 @@ int main(int argc, const char *argv[])
 	Sys *pSys = Sys::getInstance();
 	// 出图模块初始化。数据流向：sensor -> vif -> vpe -> venc -> 应用处理。
 	Sensor *pSensor = Sensor::getInstance();// sensor 初始化
-	pSensor->setFps(30);
+	pSensor->setFps(20);
 	Vif *pVif = Vif::getInstance();			// VIF 初始化
 	Vpe *pVpe = Vpe::getInstance();			// VPE 初始化
 	pVpe->createMainPort(Vpe::vpeMainPort);	// 创建VPE 主码流
@@ -61,13 +62,19 @@ int main(int argc, const char *argv[])
 	//pVenc->createJpegStream(Venc::vencJpegChn, NULL);	// 创建VENC-JPEG码流
 
 	//pVenc->setCrop(Venc::vencMainChn, (2560 - 1920) / 2, (1440 - 1080) / 2, 1920, 1080);
-	
+
 	// 绑定VIF -> VPE. 只需要绑定一次，用REALTIME
 	pSys->bindVif2Vpe(Vif::vifPort, Vpe::vpeInputPort, 20, 20, E_MI_SYS_BIND_TYPE_REALTIME, 0);
+	#if 0	// vpe -> venc
 	// 绑定VPE -> VENC, 如果有多路码流，则需要绑定多次。
 	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencMainChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
 	//pSys->bindVpe2Venc(Vpe::vpeSubPort, Venc::vencSubChn, 30, 30, E_MI_SYS_BIND_TYPE_REALTIME, 0);
 	//pSys->bindVpe2Venc(Vpe::vpeJpegPort, Venc::vencJpegChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#else	// vpe -> divp -> venc
+	Divp *pDivp = Divp::getInstance();
+	pSys->bindVpe2Divp(Vpe::vpeMainPort, Divp::divpChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	pSys->bindDivp2Venc(Divp::divpChn, Venc::vencMainChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#endif
 #endif
 
 	// 初始化OSD

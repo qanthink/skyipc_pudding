@@ -22,6 +22,9 @@ public:
 	MI_S32 bindVif2Vpe(MI_U32 u32VifPortID, MI_U32 u32VpePortID, MI_U32 u32SrcFrmrate, MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam);
 	MI_S32 bindVpe2Venc(MI_U32 u32VpePortID, MI_U32 u32VencChnID, MI_U32 u32SrcFrmrate, MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam);
 	
+	MI_S32 bindVpe2Divp(MI_U32 u32VpePortID, MI_U32 u32DivpChnID, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam);
+	MI_S32 bindDivp2Venc(MI_U32 u32DivpPortID, MI_U32 u32VencChnID, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam);
+	
 	MI_S32 bindVdecChn2DispPort(MI_U32 u32SrcChnID, MI_U32 u32DstPortID);
 	MI_S32 bindVdecChn2DispPort_N(MI_U32 u32PortNum);
 

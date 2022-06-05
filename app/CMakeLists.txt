@@ -37,6 +37,7 @@ include_directories(
 	system/sensor
 	system/vif
 	system/vpe
+	system/divp
 	system/venc
 	system/sys
 	system/audio_ai
@@ -63,6 +64,7 @@ link_directories(
 	system/sensor
 	system/vif
 	system/vpe
+	system/divp
 	system/venc
 	system/sys
 	system/rgn
@@ -92,7 +94,7 @@ add_executable(skyipc ${DIR_SRC}) # 生成可执行文件
 #设置 target 需要链接的库
 target_link_libraries(skyipc 
 	testing
-	sensor vif vpe venc sys rgn ircut
+	sensor vif vpe divp venc sys rgn ircut
 	ai ao aac aad
 	audio_player
 	#wifi

@@ -213,6 +213,78 @@ MI_S32 Sys::bindVpe2Venc(MI_U32 u32VpePortID, MI_U32 u32VencChnID, MI_U32 u32Src
 }
 
 /*-----------------------------------------------------------------------------
+描--述：绑定VPE 到DIVP
+参--数：u32VpePortID VPE端口号; u32DivpChnID VENC通道号；u32SrcFrmrate 源帧率；u32DstFrmrate 目标帧率。
+返回值：成功，返回0; 失败，返回错误码。
+注--意：
+-----------------------------------------------------------------------------*/
+MI_S32 Sys::bindVpe2Divp(MI_U32 u32VpePortID, MI_U32 u32DivpChnID, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam)
+{
+	cout << "Call Sys::bindVpe2Divp()." << endl;
+
+	MI_SYS_ChnPort_t stSrcChnPort;
+	memset(&stSrcChnPort, 0, sizeof(MI_SYS_ChnPort_t));
+	stSrcChnPort.eModId = E_MI_MODULE_ID_VPE;
+	stSrcChnPort.u32DevId = 0;
+	stSrcChnPort.u32ChnId = 0;
+	stSrcChnPort.u32PortId = u32VpePortID;
+
+	MI_SYS_ChnPort_t stDstChnPort;
+	memset(&stDstChnPort, 0, sizeof(MI_SYS_ChnPort_t));
+	stDstChnPort.eModId = E_MI_MODULE_ID_DIVP;
+	stDstChnPort.u32DevId = 0;
+	stDstChnPort.u32ChnId = u32DivpChnID;
+	stDstChnPort.u32PortId = 0;
+
+	// MI_S32 MI_SYS_BindChnPort(MI_SYS_ChnPort_t *pstSrcChnPort, MI_SYS_ChnPort_t *pstDstChnPort, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate);
+	MI_S32 s32Ret = 0;	
+	s32Ret = MI_SYS_BindChnPort2(&stSrcChnPort, &stDstChnPort, u32SrcFrmrate, u32DstFrmrate, eBindType, 0);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_SYS_BindChnPort2(), errno = " << s32Ret << endl;
+	}
+
+	cout << "Call Sys::bindVpe2Divp() end." << endl;
+	return s32Ret;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：绑定DIVP 到VENC
+参--数：u32DivpPortID DIVP端口号; u32VencChnID VENC通道号；u32SrcFrmrate 源帧率；u32DstFrmrate 目标帧率。
+返回值：成功，返回0; 失败，返回错误码。
+注--意：
+-----------------------------------------------------------------------------*/
+MI_S32 Sys::bindDivp2Venc(MI_U32 u32DivpPortID, MI_U32 u32VencChnID, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam)
+{
+	cout << "Call Sys::bindVpe2Divp()." << endl;
+
+	MI_SYS_ChnPort_t stSrcChnPort;
+	memset(&stSrcChnPort, 0, sizeof(MI_SYS_ChnPort_t));
+	stSrcChnPort.eModId = E_MI_MODULE_ID_DIVP;
+	stSrcChnPort.u32DevId = 0;
+	stSrcChnPort.u32ChnId = 0;
+	stSrcChnPort.u32PortId = u32DivpPortID;
+
+	MI_SYS_ChnPort_t stDstChnPort;
+	memset(&stDstChnPort, 0, sizeof(MI_SYS_ChnPort_t));
+	stDstChnPort.eModId = E_MI_MODULE_ID_VENC;
+	stDstChnPort.u32DevId = 0;
+	stDstChnPort.u32ChnId = u32VencChnID;
+	stDstChnPort.u32PortId = 0;
+
+	// MI_S32 MI_SYS_BindChnPort(MI_SYS_ChnPort_t *pstSrcChnPort, MI_SYS_ChnPort_t *pstDstChnPort, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate);
+	MI_S32 s32Ret = 0;	
+	s32Ret = MI_SYS_BindChnPort2(&stSrcChnPort, &stDstChnPort, u32SrcFrmrate, u32DstFrmrate, eBindType, 0);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_SYS_BindChnPort2(), errno = " << s32Ret << endl;
+	}
+
+	cout << "Call Sys::bindVpe2Divp() end." << endl;
+	return s32Ret;
+}
+
+/*-----------------------------------------------------------------------------
 描--述：绑定VDEC 到DISP.
 参--数：u32SrcChnID VDEC的通道号；u32DstPortID DISP的port号
 返回值：成功，返回0; 失败，返回错误码。
