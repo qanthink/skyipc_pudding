@@ -35,6 +35,8 @@ xxx版权所有。
 #define USE_SPIPANEL 0
 #define TEST_ETHERNET 0
 
+#include "avtp_client.h"
+
 extern volatile bool g_bRunning;
 
 void *routeAi(void *arg);
@@ -50,4 +52,5 @@ void getNextViFrame(unsigned char chn);
 void changeBit(unsigned int bitrate, unsigned char);
 
 int testEthernet();
+int avtpChangeKbps(AvtpVideoClient *pAvtpVideoClient, unsigned int timeSec);
 

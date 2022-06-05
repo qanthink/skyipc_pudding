@@ -108,7 +108,7 @@ MI_S32 Venc::createChn(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 -----------------------------------------------------------------------------*/
 MI_S32 Venc::getChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 {
-	cout << "Call Venc::getChnAttr()." << endl;
+	//cout << "Call Venc::getChnAttr()." << endl;
 
 	bool bShow = false;
 	MI_VENC_ChnAttr_t stChnAttr;
@@ -142,7 +142,7 @@ MI_S32 Venc::getChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 		cout << "stChnAttr.stVeAttr.stAttrJpeg.u32PicHeight = " << stChnAttr.stVeAttr.stAttrJpeg.u32PicHeight << endl;
 	}
 
-	cout << "Call Venc::getChnAttr() end." << endl;
+	//cout << "Call Venc::getChnAttr() end." << endl;
 	return s32Ret;
 }
 
@@ -154,7 +154,7 @@ MI_S32 Venc::getChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 -----------------------------------------------------------------------------*/
 MI_S32 Venc::setChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 {
-	cout << "Call Venc::setChnAttr()." << endl;
+	//cout << "Call Venc::setChnAttr()." << endl;
 	if(NULL == pstChnAttr)
 	{
 		cerr << "Fail to call Venc::setChnAttr(). Argument has null value." << endl;
@@ -169,7 +169,7 @@ MI_S32 Venc::setChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 		cerr << "Fail to call MI_VENC_SetChnAttr(), errno = " << s32Ret << endl;
 	}
 
-	cout << "Call Venc::setChnAttr() end." << endl;
+	//cout << "Call Venc::setChnAttr() end." << endl;
 	return s32Ret;
 }
 
@@ -181,7 +181,7 @@ MI_S32 Venc::setChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 -----------------------------------------------------------------------------*/
 MI_S32 Venc::changeBitrate(MI_VENC_CHN vencChn, MI_U32 u32BitrateKb)
 {
-	cout << "Call Venc::changeBitrate()." << endl;
+	//cout << "Call Venc::changeBitrate()." << endl;
 
 	MI_VENC_ChnAttr_t stChnAttr;
 	memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
@@ -201,7 +201,7 @@ MI_S32 Venc::changeBitrate(MI_VENC_CHN vencChn, MI_U32 u32BitrateKb)
 		cerr << "Fail to call Venc::setChnAttr(), errno = " << s32Ret << endl;
 	}
 
-	cout << "Call Venc::changeBitrate() end." << endl;
+	//cout << "Call Venc::changeBitrate() end." << endl;
 	return s32Ret;
 }
 

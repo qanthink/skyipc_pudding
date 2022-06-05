@@ -95,8 +95,8 @@ private:
 
 	// 主码流输入分辨率
 	//emResol_t emMainResIn = emResolInvalid;
-	//emResol_t emMainResIn = emResol2MP_1920_1080;
-	emResol_t emMainResIn = emResol4MP_2560_1440;
+	emResol_t emMainResIn = emResol2MP_1920_1080;
+	//emResol_t emMainResIn = emResol4MP_2560_1440;
 	//emResol_t emMainResIn = emResol8MP_3840_2160;
 
 	// 主码流输出分辨率
@@ -104,7 +104,7 @@ private:
 	//emResol_t emMainResOut = emResol4MP_2560_1440;
 
 	// 主码流码率、GOP、FPS
-	unsigned int mainBitRateKb = 8 * 1024;
+	unsigned int mainBitRateKb = 2 * 1024;
 	unsigned int mainGop = 15;
 	unsigned int mainFrmRate = 20;
 

@@ -425,6 +425,7 @@ void *routeVideo(void *arg)
 	cout << "Call pEthernet->getInterfaceIP();" << endl;
 	cout << "ipAddress = " << ipAddress << endl;
 	AvtpVideoClient avtpVideClient(ipAddress, "192.168.0.200");
+	thread thChangeBitrate(avtpChangeKbps, &avtpVideClient, 3);
 	#endif
 	
 	while(g_bRunning)
@@ -497,23 +498,6 @@ void *routeVideo(void *arg)
 			{
 				avtpVideClient.stop();
 			}
-			double lossRate = avtpVideClient.getLossRate();
-			if(lossRate >= 0.9)
-			{
-				pVenc->changeBitrate(Venc::vencMainChn, 0.5 * 1024);
-			}
-			else if(lossRate >= 0.7)
-			{
-				pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
-			}
-			else if(lossRate > 0.4)
-			{
-				pVenc->changeBitrate(Venc::vencMainChn, 2 * 1024);
-			}
-			else
-			{
-				pVenc->changeBitrate(Venc::vencMainChn, 4 * 1024);
-			}
 			#endif
 		}
 
@@ -524,6 +508,10 @@ void *routeVideo(void *arg)
 		}
 	}
 
+	#if (1 == (USE_AVTP_VIDEO))
+	thChangeBitrate.join();
+	#endif
+
 	#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 	if(-1 != fd)
 	{
@@ -533,6 +521,47 @@ void *routeVideo(void *arg)
 	#endif
 
 	return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：码率调整线程：每隔若干秒调整一次码率。
+参--数：
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
+int avtpChangeKbps(AvtpVideoClient *pAvtpVideoClient, unsigned int timeSec)
+{
+	cout << "Call avtpChangeKbps()." << endl;
+
+	while(g_bRunning)
+	{
+
+		this_thread::sleep_for(chrono::seconds(timeSec));
+	
+		Venc *pVenc = Venc::getInstance();
+		double lossRate = pAvtpVideoClient->getLossRate();
+		if(lossRate >= 0.9)
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 0.5 * 1024);
+		}
+		else if(lossRate >= 0.7)
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
+		}
+		else if(lossRate > 0.4)
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 1.5 * 1024);
+		}
+		else
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 2 * 1024);
+		}
+
+		//cout << "lossRate = " << lossRate << endl;
+	}
+
+	cout << "Call avtpChangeKbps() end." << endl;
+	return 0;
 }
 
 /*-----------------------------------------------------------------------------
