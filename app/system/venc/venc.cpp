@@ -157,7 +157,7 @@ MI_S32 Venc::setChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 	cout << "Call Venc::setChnAttr()." << endl;
 	if(NULL == pstChnAttr)
 	{
-		cerr << "Call Venc::setChnAttr(). Argument has null valu.e" << endl;
+		cerr << "Fail to call Venc::setChnAttr(). Argument has null value." << endl;
 		return -1;
 	}
 
@@ -170,33 +170,6 @@ MI_S32 Venc::setChnAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChnAttr)
 	}
 
 	cout << "Call Venc::setChnAttr() end." << endl;
-	return s32Ret;
-}
-
-/*-----------------------------------------------------------------------------
-描--述：设置剪裁区域。
-参--数：vencChn VENC通道；pstChnAttr 指向通道属性的结构体指针。
-返回值：成功，返回0; 失败，返回错误码。
-注--意：
------------------------------------------------------------------------------*/
-MI_S32 Venc::setCrop(MI_VENC_CHN vencChn, MI_U32 x, MI_U32 y, MI_U32 w, MI_U32 h)
-{
-	cout << "Call Venc::setCrop() end." << endl;
-	MI_S32 s32Ret = 0;
-	MI_VENC_CropCfg_t stCropCfg;
-
-	stCropCfg.bEnable = true;
-	stCropCfg.stRect.u32Left = x;
-	stCropCfg.stRect.u32Top = y;
-	stCropCfg.stRect.u32Width = w;
-	stCropCfg.stRect.u32Height = h;
-	s32Ret = MI_VENC_SetCrop(vencChn, &stCropCfg);
-	if(0 != s32Ret)
-	{
-		cerr << "Fail to call MI_VENC_SetCrop(), errno = " << s32Ret << endl;
-	}
-
-	cout << "Call Venc::setCrop() end." << endl;
 	return s32Ret;
 }
 
@@ -229,6 +202,33 @@ MI_S32 Venc::changeBitrate(MI_VENC_CHN vencChn, MI_U32 u32BitrateKb)
 	}
 
 	cout << "Call Venc::changeBitrate() end." << endl;
+	return s32Ret;
+}
+
+/*-----------------------------------------------------------------------------
+描--述：设置通道属性。
+参--数：vencChn VENC通道；pstChnAttr 指向通道属性的结构体指针。
+返回值：成功，返回0; 失败，返回错误码。
+注--意：
+-----------------------------------------------------------------------------*/
+MI_S32 Venc::setCrop(MI_VENC_CHN vencChn, MI_U32 x, MI_U32 y, MI_U32 w, MI_U32 h)
+{
+	cout << "Call Venc::setCrop() end." << endl;
+	MI_S32 s32Ret = 0;
+	MI_VENC_CropCfg_t stCropCfg;
+
+	stCropCfg.bEnable = true;
+	stCropCfg.stRect.u32Left = x;
+	stCropCfg.stRect.u32Top = y;
+	stCropCfg.stRect.u32Width = w;
+	stCropCfg.stRect.u32Height = h;
+	s32Ret = MI_VENC_SetCrop(vencChn, &stCropCfg);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_VENC_SetCrop(), errno = " << s32Ret << endl;
+	}
+
+	cout << "Call Venc::setCrop() end." << endl;
 	return s32Ret;
 }
 
@@ -549,12 +549,12 @@ MI_S32 Venc::setH265SliceSplit(MI_VENC_CHN vencChn, MI_VENC_ParamH265SliceSplit_
 返回值：返回错误码。
 注--意：
 -----------------------------------------------------------------------------*/
-MI_S32 Venc::requestIdr(MI_VENC_CHN veChn, MI_BOOL bInstant)
+MI_S32 Venc::requestIdr(MI_VENC_CHN vencChn, MI_BOOL bInstant)
 {
 	//cout << "Call Venc::requestIdr()." << endl;
 
 	MI_S32 s32Ret = 0;
-	s32Ret = MI_VENC_RequestIdr(veChn, bInstant);
+	s32Ret = MI_VENC_RequestIdr(vencChn, bInstant);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call Venc::requestIdr(), s32Ret = " << s32Ret << endl;

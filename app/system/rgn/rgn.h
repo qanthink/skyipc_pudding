@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.8.12
 ----------------------------------------------------------------*/
 
@@ -32,18 +32,16 @@ MI_S32 ST_OSD_GetCanvasInfo(MI_RGN_HANDLE hHandle, MI_RGN_CanvasInfo_t** ppstCan
 MI_S32 ST_OSD_Clear(MI_RGN_HANDLE hHandle, ST_Rect_T *pstRect);
 MI_S32 ST_OSD_DrawText(MI_RGN_HANDLE hHandle, ST_Point_T stPoint, const char *szString, MI_U32 u32Color, DMF_Font_Size_E enSize);
 MI_S32 ST_OSD_Update(MI_RGN_HANDLE hHandle);
-
 */
 
-#ifndef __RGN_H__
-#define __RGN_H__
+#pragma once
 
 #include "mi_rgn.h"
 #include "st_common.h"
 #include "st_rgn.h"
 
 class Rgn{
-public:	
+public:
 	const static MI_RGN_HANDLE rgnHandle0 = 0;
 	const static MI_RGN_HANDLE rgnHandle1 = 1;
 	const static MI_RGN_HANDLE rgnHandle2 = 2;
@@ -53,12 +51,14 @@ public:
 	const static MI_RGN_HANDLE rgnHandle6 = 6;
 	const static MI_RGN_HANDLE rgnHandle7 = 7;
 
+public:
 	static Rgn *getInstance();
+	
 	MI_S32 enable();
 	MI_S32 disable();
 
 	/*
-					第一部分：使用MI_RGN_XXX 封装的函数（暂未用到）
+		第一部分：使用MI_RGN_XXX 封装的函数（暂未用到）
 	*/
 	MI_S32 rgnInit(MI_RGN_PaletteTable_t *pstPaletteTable);
 	MI_S32 rgnDeInit();
@@ -73,7 +73,7 @@ public:
 	MI_S32 rgnUpdateCanvas(MI_RGN_HANDLE hHandle);
 
 	/*
-					第二部分：使用ST_OSD_XXX 封装的函数
+		第二部分：使用ST_OSD_XXX 封装的函数
 	*/
 
 	MI_S32 osdInit();
@@ -106,10 +106,8 @@ private:
 	Rgn(const Rgn&);
 	Rgn& operator=(const Rgn&);
 
-	bool bEnable;
-	MI_U32 u32OsdNum;
-	const MI_U32 u32MaxOsdNum = 8;
+	bool bEnable = false;
+	MI_U32 u32OsdUsedNum = 8;
+	const MI_U32 u32OsdMaxNum = 8;
 };
-
-#endif
 

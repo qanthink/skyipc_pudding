@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
@@ -10,9 +10,7 @@ sigma star版权所有。
 */
 
 #include "aad.h"
-#include "iostream"
-#include "string.h"
-#include "unistd.h"
+#include <iostream>
 
 using namespace std;
 
@@ -24,18 +22,12 @@ Aad *Aad::getInstance()
 
 Aad::Aad()
 {
-	hDecoder = NULL;
-	bEnable = false;
-	
 	enable();
 }
 
 Aad::~Aad()
 {
 	disable();
-
-	bEnable = false;
-	hDecoder = NULL;
 }
 
 /*-----------------------------------------------------------------------------
@@ -53,10 +45,9 @@ int Aad::enable()
 		return 0;
 	}
 
-	hDecoder = openDecoder();
+	openDecoder();
 	setDecoderConf(NULL);
 	getDecoderConf(true);
-
 	bEnable = true;
 	
 	cout << "Call Aad::enable() end." << endl;
@@ -75,7 +66,6 @@ int Aad::disable()
 
 	closeDecoder();
 	hDecoder = NULL;
-
 	bEnable = false;
 
 	cout << "Call Aad::disable() end." << endl;
@@ -133,8 +123,11 @@ void Aad::closeDecoder()
 {
 	cout << "Call Aad::closeDecoder()." << endl;
 
-	NeAACDecClose(hDecoder);
-	hDecoder = NULL;
+	if(NULL == hDecoder)
+	{
+		NeAACDecClose(hDecoder);
+		hDecoder = NULL;
+	}
 	
 	cout << "Call Aad::closeDecoder() end." << endl;
 }
@@ -154,9 +147,9 @@ NeAACDecConfigurationPtr Aad::getDecoderConf(bool bShow)
 	if(NULL == pDecoderConf)
 	{
 		cerr << "Fail to call NeAACDecGetCurrentConfiguration()." << endl;
+		return NULL;
 	}
 
-	NeAACDecConfiguration stDecoderConf = *pDecoderConf;
 	if(bShow)
 	{
 		cout << "pDecoderConf->defObjectType = " << pDecoderConf->defObjectType << endl;
@@ -193,8 +186,8 @@ unsigned char Aad::setDecoderConf(NeAACDecConfigurationPtr pDecoderConf)
 		return -1;
 	}
 
-	pDecoderConf->dontUpSampleImplicitSBR = 1;	// reference jerry's demo.
-	pDecoderConf->defSampleRate = 16000;
+	pDecoderConf->dontUpSampleImplicitSBR = 1;
+	pDecoderConf->defSampleRate = sampleRate;
 	pDecoderConf->outputFormat = FAAD_FMT_16BIT;
 
 	unsigned char ret = 0;
@@ -211,32 +204,28 @@ unsigned char Aad::setDecoderConf(NeAACDecConfigurationPtr pDecoderConf)
 /*-----------------------------------------------------------------------------
 描--述：初始化解码器。
 参--数：buf 待解码的音频数据缓冲区；bufSize 缓冲区长度；
-		samplerate 待解码数据的采样率；channels 待解码数据的声道数。
 返回值：成功，返回0；失败返回-1.
 注--意：1.NeAACDecInit() 返回值的含义没搞懂。
 		2.解码器只需要调用initDecoder() 初始化一次即可。
 -----------------------------------------------------------------------------*/
-long Aad::initDecoder(unsigned char *buf, unsigned long bufSize, 
-							unsigned long *samplerate, unsigned char *channels)
+long Aad::initDecoder(unsigned char *buf, unsigned long bufSize)
 {
 	cout << "Call Aad::initDecoder()." << endl;
 
-	if(NULL == buf || 0 == bufSize || NULL == samplerate || NULL == channels)
+	if(NULL == buf || 0 == bufSize)
 	{
 		cerr << "Fail to call Aad::initDecoder() with null argument! " << endl;
 		return -1;
 	}
 	
 	long ret = 0;
-	ret = NeAACDecInit(hDecoder, buf, bufSize, samplerate, channels);
+	ret = NeAACDecInit(hDecoder, buf, bufSize, &sampleRate, &channels);
 	if(-1 == ret)
 	{
 		cerr << "Fail to call NeAACDecInit()." << endl;
 		return -1;
 	}
-	cout << "ret = " << ret << endl;
-	cout << "samplerate, channels = " << samplerate << ", " << channels << endl;
-
+	cout << "sampleRate, channels = " << sampleRate << ", " << channels << endl;
 	bInitDecoder = true;
 
 	cout << "Call Aad::initDecoder() end." << endl;
@@ -245,29 +234,31 @@ long Aad::initDecoder(unsigned char *buf, unsigned long bufSize,
 
 /*-----------------------------------------------------------------------------
 描--述：使能解码器，开始解码音频帧。
-参--数：decoderFrameInfo 解码后的信息；buf 待解码数据的缓冲区；bufSize 缓冲区长度。
+参--数：decFrameInfo 解码后的信息；buf 待解码数据的缓冲区；bufSize 缓冲区长度。
 返回值：成功，返回解码后的数据的缓冲区；失败，返回NULL.
 注--意：NeAACDecDecode() 返回的解码数据缓冲区，位于FAAD 内核，用户可以直接使用返回值。
 -----------------------------------------------------------------------------*/
-void* Aad::enDecoder(NeAACDecFrameInfo *decoderFrameInfo, unsigned char *buf, unsigned long bufSize)
+void* Aad::decDecode(NeAACDecFrameInfo *decFrameInfo, unsigned char *buf, unsigned long bufSize)
 {
 	//cout << "Call Aad::enDecoder()." << endl;
-
-	if(!bInitDecoder)
-	{
-		unsigned long samplerate = 0;
-		unsigned char channels = 0;
-		initDecoder(buf, bufSize, &samplerate, &channels);
-	}
-
-	if(NULL == decoderFrameInfo || NULL == buf || 0 == bufSize)
+	if(NULL == decFrameInfo || NULL == buf || 0 == bufSize)
 	{
 		cerr << "Fail to call Aad::enDecoder(). Argument has null or zero value!" << endl;
 		return NULL;
 	}
+	
+	if(!bInitDecoder)
+	{
+		initDecoder(buf, bufSize);
+	}
+
+	if(!bInitDecoder)
+	{
+		cerr << "Fail to call Aad::enDecoder(). Decoder is not initialized!" << endl;
+	}
 
 	void *pcmBuf = NULL;	
-	pcmBuf = NeAACDecDecode(hDecoder, decoderFrameInfo, buf, bufSize);
+	pcmBuf = NeAACDecDecode(hDecoder, decFrameInfo, buf, bufSize);
 
 	//cout << "Call Aad::enDecoder() end." << endl;
 	return pcmBuf;

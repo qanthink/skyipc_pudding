@@ -94,7 +94,6 @@ MI_S32 Vif::setDevAttr()
 	// step1: 读取sensor 信息。
 	MI_SNR_PADInfo_t stPadInfo;
 	memset(&stPadInfo, 0, sizeof(MI_SNR_PADInfo_t));
-	
 	Sensor *pSensor = Sensor::getInstance();
 	s32Ret = pSensor->getPadInfo(E_MI_SNR_PAD_ID_0, &stPadInfo);
 	if(0 != s32Ret)
@@ -139,7 +138,7 @@ MI_S32 Vif::setDevAttr()
 	}
 
 	// step3: 设置VIF 设备属性结构体。
-	s32Ret = MI_VIF_SetDevAttr(u32VifDev, &stDevAttr);
+	s32Ret = MI_VIF_SetDevAttr(vifDev, &stDevAttr);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_VIF_SetDevAttr(), errno = " << s32Ret << endl;
@@ -158,10 +157,10 @@ MI_S32 Vif::setDevAttr()
 MI_S32 Vif::enableDev()
 {
 	cout << "Call Vif::enableDev()." << endl;
-	//MI_S32 MI_VIF_EnableDev(MI_VIF_DEV u32VifDev);
+	//MI_S32 MI_VIF_EnableDev(MI_VIF_DEV vifDev);
 
 	MI_S32 s32Ret = 0;
-	s32Ret = MI_VIF_EnableDev(u32VifDev);
+	s32Ret = MI_VIF_EnableDev(vifDev);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_VIF_EnableDev(), errno = " << s32Ret << endl;
@@ -181,11 +180,11 @@ MI_S32 Vif::disableDev()
 {
 	cout << "Call Vif::disableDev()." << endl;
 
-	// MI_S32 MI_VIF_DisableDev(MI_VIF_DEV u32VifDev);
+	// MI_S32 MI_VIF_DisableDev(MI_VIF_DEV vifDev);
 	MI_S32 s32Ret = 0;
 
 	
-	s32Ret = MI_VIF_DisableDev(u32VifDev);
+	s32Ret = MI_VIF_DisableDev(vifDev);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_VIF_DisableDev(), errno = " << s32Ret << endl;
@@ -272,15 +271,15 @@ MI_S32 Vif::enableChnPort(MI_VIF_PORT u32ChnPort)
 	MI_SYS_ChnPort_t stChnPort;
 	memset(&stChnPort, 0x0, sizeof(MI_SYS_ChnPort_t));
 	stChnPort.eModId = E_MI_MODULE_ID_VIF;
-	stChnPort.u32DevId = u32VifDev;
-	stChnPort.u32ChnId = u32VifChn;
+	stChnPort.u32DevId = vifDev;
+	//stChnPort.u32ChnId = vifChn;
 	stChnPort.u32PortId = u32ChnPort;
 	MI_SYS_SetChnOutputPortDepth(&stChnPort, 0, 6);
 	
-	//MI_S32 MI_VIF_EnableChnPort(MI_VIF_CHN u32VifChn, MI_VIF_PORT u32ChnPort);
+	//MI_S32 MI_VIF_EnableChnPort(MI_VIF_CHN vifChn, MI_VIF_PORT u32ChnPort);
 	MI_S32 s32Ret = 0;
 
-	s32Ret = MI_VIF_EnableChnPort(u32VifChn, u32ChnPort);
+	s32Ret = MI_VIF_EnableChnPort(vifDev, u32ChnPort);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_VIF_EnableChnPort(), errno = " << s32Ret << endl;
@@ -300,10 +299,10 @@ MI_S32 Vif::disableChnPort(MI_VIF_PORT u32ChnPort)
 {
 	cout << "Call Vif::disableChnPort()." << endl;
 
-	// MI_S32 MI_VIF_DisableChnPort(MI_VIF_CHN u32VifChn, MI_VIF_PORT u32ChnPort);
+	// MI_S32 MI_VIF_DisableChnPort(MI_VIF_CHN vifChn, MI_VIF_PORT u32ChnPort);
 	MI_S32 s32Ret = 0;
 
-	s32Ret = MI_VIF_DisableChnPort(u32VifChn, u32ChnPort);
+	s32Ret = MI_VIF_DisableChnPort(vifDev, u32ChnPort);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_VIF_DisableChnPort(), errno = " << s32Ret << endl;

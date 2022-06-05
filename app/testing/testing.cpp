@@ -145,7 +145,7 @@ void recvAudio(unsigned char *buf, unsigned short len)
 	memset(&decoderFrameInfo, 0, sizeof(NeAACDecFrameInfo));
 
 	// step1: 解码一帧数据。
-	pcmBuf = pAad->enDecoder(&decoderFrameInfo, buf, len);
+	pcmBuf = pAad->decDecode(&decoderFrameInfo, buf, len);
 	if(NULL == pcmBuf)
 	{
 		cerr << "Fail to call pAad->enDecoder(), return null value!" << endl;
@@ -164,16 +164,16 @@ void recvAudio(unsigned char *buf, unsigned short len)
 
 #if 0
 	// step2: 立体声转单声道，并用转换后的数据填充AO 结构体。
-	AudioOut::AudioOutFrame_t stAOframe;
-	memset(&stAOframe, 0, sizeof(AudioOut::AudioOutFrame_t));
+	stAOFrame_t stAOframe;
+	memset(&stAOframe, 0, sizeof(stAOFrame_t));
 
 	pAad->stereo2mono((unsigned char*)pcmBuf, decoderFrameInfo.samples * 2, stAOframe.audioBuf, NULL);
 	stAOframe.stAudioFrame.u32Len = decoderFrameInfo.samples;
 
 	// step3: 将AO 数据塞给AO 模块播放。
-	AudioOut::getInstance()->sendStream(&stAOframe);
+	audioOut::getInstance()->sendStream(&stAOframe);
 	//usleep(1 * 1000);		// 若不阻塞，存在AO 拿数据不及时，踩内存的现象。2020.7.15 15:00
-							// 2020.7.15 23:00 更新AO 模块，修复该问题。	
+							// 2020.7.15 23:00 更新AO 模块，修复该问题。
 #endif
 	return;
 }
@@ -191,25 +191,50 @@ void *routeAi(void *arg)
 	unsigned char *aacBuf = NULL;
 	Aac *pAac = Aac::getInstance();
 
-	pcmBuf = (unsigned char*)malloc(pAac->inputSamples);
+	#if (1 == (USE_FAAC_FAAD))
+	Aac *pAac = Aac::getInstance();
+	pcmBuf = (unsigned char*)malloc(pAac->getInputSamples());
 	if(NULL == pcmBuf)
 	{
 		cerr << "Fail to call malloc(3)." << endl;	
 	}
 
-	aacBuf = (unsigned char*)malloc(pAac->maxOutputBytes);
-	if(NULL == pcmBuf)
+	aacBuf = (unsigned char*)malloc(pAac->getMaxOutputBytes());
+	if(NULL == aacBuf)
 	{
 		cerr << "Fail to call malloc(3)." << endl;	
 	}
+	#endif
+
+	unsigned int uFrameCnt = 20 * 16000 / 1000 * 1.05;	// n * samples / 1000 = n 秒。
+
+	#if (1 == (USE_AI_SAVE_LOCAL_PCM))
+	const char *filePathPcm = "/mnt/linux/Downloads/audio.pcm";
+	ofstream ofsPcm;
+	ofsPcm.open(filePathPcm, ios::trunc);
+	if(ofsPcm.fail())
+	{
+		cerr << "Fail to open " << filePathPcm << ", " << strerror(errno) << endl;
+	}
+	#endif
+	
+	#if (1 == (USE_AI_SAVE_LOCAL_AAC))
+	const char *filePathAac = "/mnt/linux/Downloads/audio.aac";
+	ofstream ofsAac;
+	ofsAac.open(filePathAac, ios::trunc);
+	if(ofsAac.fail())
+	{
+		cerr << "Fail to open " << filePathAac << ", " << strerror(errno) << endl;
+	}
+	#endif
 
 	while(g_bRunning)
 	{
 		MI_S32 s32Ret = 0;
-		audioIn::AudioInFrame_t stAudioFrame;
+		stAIFrame_t stAudioFrame;
 		memset(&stAudioFrame, 0, sizeof(stAudioFrame));
 		
-		s32Ret = audioIn::getInstance()->rcvStream(&stAudioFrame);
+		s32Ret = AudioIn::getInstance()->recvStream(&stAudioFrame);
 		if(0 != s32Ret)
 		{
 			cerr << "Fail to call pAudioIn->rcvStream(). s32Ret = " << s32Ret << endl;
@@ -217,21 +242,61 @@ void *routeAi(void *arg)
 		}
 
 		#if 0	// debug
-		cout << "[AI]" << stAudioFrame.u32Len << endl;
-		cout << "[AI bLoudSoundDetected]" << (int)stAudioFrame.bLoudSoundDetected << endl;
+		cout << "[AI bLoudSoundDetected] = " << (int)stAudioFrame.bLoudSoundDetected << endl;
+		cout << "stAudioFrame.u32Len = " << stAudioFrame.u32Len << endl;
+		cout << "stAudioFrame.eBitWidth = " << stAudioFrame.eBitWidth << endl;
+		cout << "stAudioFrame.eSoundmode = " << stAudioFrame.eSoundmode << endl;
 		#endif
 
-		int ret = 0;
-		Aac *pAac = Aac::getInstance();
-		ret = pAac->enEncoder((int32_t *)stAudioFrame.apFrameBuf, stAudioFrame.u32Len / 2, aacBuf, pAac->maxOutputBytes);
-		if(-1 == ret || 0 == ret)
+		int aacBytes = 0;
+		#if (1 == (USE_FAAC_FAAD))
+		aacBytes = pAac->encEncode((int32_t *)stAudioFrame.apFrameBuf, stAudioFrame.u32Len / 2, aacBuf, pAac->getMaxOutputBytes());
+		if(-1 == aacBytes || 0 == aacBytes)
 		{
-			cerr << "Fail to call pAac->enEncode(), ret = " << ret << endl;
+			cerr << "Fail to call pAac->enEncode(), ret = " << aacBytes << endl;
 			continue;
 		}
+		#endif
 
 		#if 0	//debug
-		cout << "Success to call pAac->enEncoder(), ret = " << ret << endl;
+		cout << "Success to call pAac->encEncode(), ret = " << ret << endl;
+		#endif
+
+		if(0 != uFrameCnt)
+		{
+			--uFrameCnt;
+		}
+
+		#if (1 == (USE_AI_SAVE_LOCAL_PCM))
+		if(0 != uFrameCnt)
+		{
+			ofsPcm.write((const char *)stAudioFrame.apFrameBuf, stAudioFrame.u32Len / 2);
+		}
+		else
+		{
+			if(ofsPcm.is_open())
+			{
+				ofsPcm.close();
+				cout << "Write local PCM file over. Close file." << endl;
+			}
+		}
+		#endif
+
+		//audioOut::getInstance()->sendStream(&stAudioFrame);
+
+		#if (1 == (USE_AI_SAVE_LOCAL_AAC))
+		if(0 != uFrameCnt)
+		{
+			ofsAac.write((const char *)aacBuf, aacBytes);
+		}
+		else
+		{
+			if(ofsAac.is_open())
+			{
+				ofsAac.close();
+				cout << "Write local AAC file over. Close file." << endl;
+			}
+		}
 		#endif
 		
 		#if (1 == (USE_MINDSDK_AUDIO))
@@ -239,10 +304,26 @@ void *routeAi(void *arg)
 		#endif
 	}
 
+	#if (1 == (USE_FAAC_FAAD))
 	free(aacBuf);
 	aacBuf = NULL;
 	free(pcmBuf);
 	pcmBuf = NULL;
+	#endif
+
+	#if (1 == (USE_AI_SAVE_LOCAL_PCM))
+	if(ofsPcm.is_open())
+	{
+		ofsPcm.close();
+	}
+	#endif
+
+	#if (1 == (USE_AI_SAVE_LOCAL_AAC))
+	if(ofsAac.is_open())
+	{
+		ofsAac.close();
+	}
+	#endif
 
 	return NULL;
 }

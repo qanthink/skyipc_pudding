@@ -1,11 +1,10 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#ifndef __SYS_HPP__
-#define __SYS_HPP__
+#pragma once
 
 #include "mi_sys.h"
 
@@ -41,4 +40,3 @@ private:
 	Sys& operator=(const Sys&);
 };
 
-#endif

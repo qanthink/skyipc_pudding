@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
@@ -9,8 +9,7 @@ sigma star版权所有。
 本程序基于faac 开源代码进行开发，请遵守faac 开源规则。
 */
 
-#ifndef __AAC_H__
-#define __AAC_H__
+#pragma once
 
 #include "faac.h"
 
@@ -61,30 +60,30 @@ class Aac{
 public:
 	static Aac* getInstance();
 
-	unsigned long inputSamples;		// 输入采样率
-	unsigned long maxOutputBytes;	// 最大输出字节
-
 	int enable();
 	int disable();
 
 	int getFaacVersion();
-	faacEncHandle openEncoder(unsigned long sampleRate, unsigned int numChannels, \
-									unsigned long *inputSamples, unsigned long *maxOutputBytes);
-	int closeEncoder();
-	faacEncConfigurationPtr getEncoderConf();
-	int setEncoderConf(faacEncConfigurationPtr pEncoderConf);
-	int enEncoder(int32_t *inputBuf, \
-						unsigned int samplesInput, unsigned char *outputBuf, unsigned int bufSize);
+	int encEncode(int32_t *inputBuf, unsigned int samplesInput, unsigned char *outputBuf, unsigned int bufSize);
 	
+	unsigned long getInputSamples() const {return inputSamples;};
+	unsigned long getMaxOutputBytes() const {return maxOutputBytes;};
 private:
 	Aac();
 	~Aac();
 	Aac(const Aac&);
 	Aac& operator=(const Aac&);
 
-	bool bEnable;
-	faacEncHandle hEncoder;
+	bool bEnable = false;
+	faacEncHandle hEncoder = 0;						// 编码器句柄。
+	unsigned long inputSamples = 0;					// 输入采样率，被openEncoder() 修改。
+	unsigned long maxOutputBytes = 0;				// 最大输出字节，被openEncoder() 修改。
+	const static unsigned int numChannels = 1;		// 声道数。
+	const static unsigned long sampleRate = 16000;	// 采样率，
+	
+	faacEncConfigurationPtr getEncoderConf();
+	int setEncoderConf(faacEncConfigurationPtr pEncoderConf);
+	faacEncHandle openEncoder();
+	int closeEncoder();
 };
-
-#endif
 

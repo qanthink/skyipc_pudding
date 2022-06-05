@@ -214,7 +214,6 @@ int Sensor::getPlaneInfo(MI_SNR_PAD_ID_e ePADId, MI_SNR_PlaneInfo_t *pstPlaneInf
 	
 	//MI_S32 MI_SNR_GetPlaneInfo(MI_SNR_PAD_ID_e ePADId, MI_U32 u32PlaneID, MI_SNR_PlaneInfo_t *pstPlaneInfo);
 	MI_S32 s32Ret = 0;
-
 	memset(pstPlaneInfo, 0, sizeof(MI_SNR_PlaneInfo_t));
 	s32Ret = MI_SNR_GetPlaneInfo(ePADId, u32PlaneID, pstPlaneInfo);
 	if(0 != s32Ret)

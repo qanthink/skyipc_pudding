@@ -1,13 +1,13 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
 #include "rgn.h"
 #include "vpe.h"
-#include "string.h"
-#include "iostream"
+#include <string.h>
+#include <iostream>
 
 using namespace std;
 
@@ -47,11 +47,8 @@ MI_S32 Rgn::enable()
 {
 	cout << "Call Rgn::enable()." << endl;
 
-	u32OsdNum = u32MaxOsdNum;
-	//u32OsdNum = 1;
-	
 	osdInit();
-	osdCreate_N(u32OsdNum);
+	osdCreate_N(u32OsdUsedNum);
 
 	bEnable = true;	
 	cout << "Call Rgn::enable() end." << endl;
@@ -69,7 +66,7 @@ MI_S32 Rgn::disable()
 	cout << "Call Rgn::disable()." << endl;
 	bEnable = false;
 
-	osdDestroy_N(u32OsdNum);
+	osdDestroy_N(u32OsdUsedNum);
 	osdDeinit();
 	
 	cout << "Call Rgn::disable() end." << endl;
@@ -116,6 +113,7 @@ MI_S32 Rgn::rgnInit(MI_RGN_PaletteTable_t *pstPaletteTable)
 	}
 
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_Init(pstPaletteTable);
 	switch(s32Ret)
 	{
@@ -144,6 +142,7 @@ MI_S32 Rgn::rgnDeInit()
 	cout << "Call Rgn::rgnDeInit()." << endl;
 		
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_DeInit();
 	switch(s32Ret)
 	{
@@ -185,6 +184,7 @@ MI_S32 Rgn::rgnCreate(MI_RGN_HANDLE hHandle, MI_RGN_Attr_t *pstRegion)
 	}
 	
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_Create(hHandle, pstRegion);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -212,6 +212,7 @@ MI_S32 Rgn::rgnDestroy(MI_RGN_HANDLE hHandle)
 	}
 		
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_Destroy(hHandle);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -245,6 +246,7 @@ MI_S32 Rgn::rgnAttachToChn(MI_RGN_HANDLE hHandle, MI_RGN_ChnPort_t* pstChnPort, 
 	}
 		
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_AttachToChn(hHandle, pstChnPort, pstChnAttr);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -278,6 +280,7 @@ MI_S32 Rgn::rgnDetachFromChn(MI_RGN_HANDLE hHandle, MI_RGN_ChnPort_t *pstChnPort
 	}
 		
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_DetachFromChn(hHandle, pstChnPort);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -311,6 +314,7 @@ MI_S32 Rgn::rgnGetCanvasInfo(MI_RGN_HANDLE hHandle, MI_RGN_CanvasInfo_t* pstCanv
 	}
 	
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_GetCanvasInfo(hHandle, pstCanvasInfo);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -341,6 +345,7 @@ MI_S32 Rgn::rgnUpdateCanvas(MI_RGN_HANDLE hHandle)
 	}
 	
 	MI_S32 s32Ret = 0;
+	MI_U16 u16SocId;
 	s32Ret = MI_RGN_UpdateCanvas(hHandle);
 	if(MI_RGN_OK != s32Ret)
 	{
@@ -401,11 +406,11 @@ MI_S32 Rgn::osdDeinit()
 
 /*-----------------------------------------------------------------------------
 描--述：创建若干个OSD
-参--数：u32OsdNum OSD数量
+参--数：u32OsdUsedNum OSD数量
 返回值：返回成功创建的OSD 的数量;
 注--意：
 -----------------------------------------------------------------------------*/
-MI_U32 Rgn::osdCreate_N(MI_U32 u32OsdNum)
+MI_U32 Rgn::osdCreate_N(MI_U32 u32OsdUsedNum)
 {
 	cout << "Call Rgn::osdCreate_N()." << endl;
 
@@ -442,7 +447,7 @@ MI_U32 Rgn::osdCreate_N(MI_U32 u32OsdNum)
 	
 	int i = 0;
 	MI_U32 u32CreatedCnt = 0;
-	for(i = 0; i < u32OsdNum; ++i)
+	for(i = 0; i < u32OsdUsedNum; ++i)
 	{
 		MI_S32 s32Ret = 0;
 		s32Ret = ST_OSD_Create(i, &stRgnAttr);
@@ -472,11 +477,11 @@ MI_U32 Rgn::osdCreate_N(MI_U32 u32OsdNum)
 
 /*-----------------------------------------------------------------------------
 描--述：销毁若干个OSD
-参--数：u32OsdNum OSD数量
+参--数：u32OsdUsedNum OSD数量
 返回值：返回成功销毁的OSD 的数量;
 注--意：
 -----------------------------------------------------------------------------*/
-MI_U32 Rgn::osdDestroy_N(MI_U32 u32OsdNum)
+MI_U32 Rgn::osdDestroy_N(MI_U32 u32OsdUsedNum)
 {
 	cout << "Call Rgn::osdInit()." << endl;
 
@@ -490,7 +495,7 @@ MI_U32 Rgn::osdDestroy_N(MI_U32 u32OsdNum)
 	
 	int i = 0;
 	MI_U32 u32DestroiedCnt = 0;
-	for(i = 0; i < u32OsdNum; ++i)
+	for(i = 0; i < u32OsdUsedNum; ++i)
 	{
 		MI_S32 s32Ret = 0;
 		s32Ret = rgnDetachFromChn(i, &stChnPort);

@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
@@ -11,7 +11,7 @@ sigma star版权所有。
 
 
 #include "aac.h"
-#include "iostream"
+#include <iostream>
 
 using namespace std;
 
@@ -52,13 +52,8 @@ int Aac::enable()
 		return 0;
 	}
 
-	unsigned long sampleRate = 16000;
-	unsigned int numChannels = 1;
-	maxOutputBytes = 0;
-	inputSamples = 0;
-
 	getFaacVersion();
-	hEncoder = openEncoder(sampleRate, numChannels, &inputSamples, &maxOutputBytes);
+	openEncoder();
 	setEncoderConf(NULL);
 	cout << "inputSamples, maxOutputBytes = " << inputSamples << "," << maxOutputBytes << endl;
 
@@ -81,11 +76,6 @@ int Aac::disable()
 	bEnable = false;
 	
 	closeEncoder();
-
-	inputSamples = 0;
-	maxOutputBytes = 0;
-	unsigned int numChannels = 0;
-	unsigned long sampleRate = 0;
 	
 	cout << "Call Aac::disable() end." << endl;
 	return 0;
@@ -98,19 +88,11 @@ int Aac::disable()
 返回值：成功，返回编码器描述符；失败，返回NULL.
 注--意：
 -----------------------------------------------------------------------------*/
-faacEncHandle Aac::openEncoder(unsigned long sampleRate, unsigned int numChannels, \
-									unsigned long *inputSamples, unsigned long *maxOutputBytes)
+faacEncHandle Aac::openEncoder()
 {
 	cout << "Call Aac::openEncoder()." << endl;
 
-	if(NULL == inputSamples || NULL == maxOutputBytes)
-	{
-		cerr << "Fail to call Aac::openEncoder(). Argument has null value!" << endl;
-		return NULL;
-	}
-
-	faacEncHandle hEncoder = NULL;
-	hEncoder = faacEncOpen(sampleRate, numChannels, inputSamples, maxOutputBytes);
+	hEncoder = faacEncOpen(sampleRate, numChannels, &inputSamples, &maxOutputBytes);
 	if(NULL == hEncoder)
 	{
 		cerr << "Fail to call faacEncOpen()." << endl;
@@ -130,14 +112,12 @@ int Aac::closeEncoder()
 {
 	cout << "Call Aac::closeEncoder()." << endl;
 
-	if(NULL == hEncoder)
-	{
-		cerr << "Fail to call Aac::closeEncoder(). Argument has null value!" << endl;
-		return -1;
-	}
-
 	int ret = 0;
-	ret = faacEncClose(hEncoder);
+	if(NULL != hEncoder)
+	{
+		ret = faacEncClose(hEncoder);
+		hEncoder = NULL;
+	}
 
 	cout << "Call Aac::closeEncoder() end." << endl;
 	return ret;
@@ -155,7 +135,7 @@ faacEncConfigurationPtr Aac::getEncoderConf()
 
 	if(NULL == hEncoder)
 	{
-		cerr << "Fail to call Aac::getEncoderConf(). Argument has null value!" << endl;
+		cerr << "Fail to call Aac::getEncoderConf(). hEncoder has null value!" << endl;
 		return NULL;
 	}
 
@@ -213,26 +193,24 @@ int Aac::setEncoderConf(faacEncConfigurationPtr pEncoderConf)
 描--述：开始编码，对一帧数据进行编码。
 参--数：hEncoder, 编码设备描述符；inputBuf, 输入数据的缓存区；samplesInput, 输入数据的采样率；
 		outputBuf, 输出数据的缓存区；bufSize, 输出数据缓存区的大小。
-返回值：成功，返回编码的字节数（描述得比较模糊，详细内容需要参考源码）；
-		失败，返回-1, 非法的输入参数; 
-		返回0 则表示编码的数据为0.
+返回值：成功，返回编码后的字节数（描述得比较模糊，详细内容需要参考源码）；
+		失败，返回-1, 非法的输入参数;
 注--意：
 -----------------------------------------------------------------------------*/
-int Aac::enEncoder(int32_t *inputBuf, \
-						unsigned int samplesInput, unsigned char *outputBuf, unsigned int bufSize)
+int Aac::encEncode(int32_t *inputBuf, unsigned int samplesInput, unsigned char *outputBuf, unsigned int bufSize)
 {
-	//cout << "Call Aac::enEncode()." << endl;
+	//cout << "Call Aac::encEncode()." << endl;
 
-	if(NULL == hEncoder || NULL == hEncoder || NULL == outputBuf)
+	if(NULL == hEncoder || NULL == inputBuf || NULL == outputBuf)
 	{
-		cerr << "Fail to call Aac::enEncode(). Argument has null value!" << endl;
+		cerr << "Fail to call Aac::encEncode(). Argument has null value!" << endl;
 		return -1;
 	}
 
 	int ret = 0;
 	ret = faacEncEncode(hEncoder, inputBuf, samplesInput, outputBuf, bufSize);
 
-	//cout << "Call Aac::enEncode() end." << endl;
+	//cout << "Call Aac::encEncode() end." << endl;
 	return ret;
 }
 

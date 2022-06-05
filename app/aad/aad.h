@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
+xxx版权所有。
+作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
@@ -9,9 +9,8 @@ sigma star版权所有。
 本程序基于faad 开源代码进行开发，请遵守faad 开源规则。
 */
 
-#ifndef __AAD_H__
-#define __AAD_H__
- 
+#pragma once
+
 #include "faad.h"
 
 /*
@@ -69,22 +68,13 @@ void* NeAACDecDecode(NeAACDecHandle hDecoder,      //解码器句柄
 
 class Aad{
 public:
-	static const unsigned aacBufLen = 5 * 1024;		// N * 1024 = N kb
-	unsigned char aacBuf[aacBufLen];
-	
 	static Aad *getInstance();
 	
 	int enable();
 	int disable();
 
 	int getFaadVersion();
-	NeAACDecHandle openDecoder();
-	void closeDecoder();
-	NeAACDecConfigurationPtr getDecoderConf(bool bShow);
-	unsigned char setDecoderConf(NeAACDecConfigurationPtr pDecoderConf);
-	long initDecoder(unsigned char *buf, unsigned long bufSize, 
-							unsigned long *samplerate, unsigned char *channels);
-	void* enDecoder(NeAACDecFrameInfo *decoderFrameInfo, unsigned char *buf, unsigned long bufSize);
+	void* decDecode(NeAACDecFrameInfo *decFrameInfo, unsigned char *buf, unsigned long bufSize);
 	int stereo2mono(const unsigned char *stereo16bitPcmBuf, unsigned int bufLen, \
 						unsigned char *leftChanelBuf, unsigned char *rightChanelBuf);
 	
@@ -94,10 +84,17 @@ private:
 	Aad(const Aad&);
 	Aad& operator=(const Aad&);
 
-	bool bEnable;
-	bool bInitDecoder;
-	NeAACDecHandle hDecoder;
+	bool bEnable = false;
+	bool bInitDecoder = false;
+	unsigned char channels = 0;			// 会被NeAACDecInit() 修改
+	NeAACDecHandle hDecoder = 0;		// 解码器句柄
+	unsigned long sampleRate = 16000;	// 采样率，
+	
+	long initDecoder(unsigned char *buf, unsigned long bufSize);
+	NeAACDecHandle openDecoder();
+	void closeDecoder();
+	
+	NeAACDecConfigurationPtr getDecoderConf(bool bShow);
+	unsigned char setDecoderConf(NeAACDecConfigurationPtr pDecoderConf);
 };
-
-#endif
 

@@ -32,7 +32,7 @@ private:
 	Vif& operator=(const Vif&);
 
 	bool bEnable = false;
-	const static MI_VIF_DEV u32VifDev = 0;
+	const static MI_VIF_DEV vifDev = 0;
 	const static MI_VIF_CHN u32VifChn = 0;
 };
 

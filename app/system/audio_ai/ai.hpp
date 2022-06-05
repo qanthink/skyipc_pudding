@@ -1,71 +1,64 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：lison.guo
-时间：2020.7.10
+xxx版权所有。
+作者：
+时间：2022.4.20
 ----------------------------------------------------------------*/
 
-#ifndef __AI_HPP__
-#define __AI_HPP__
+#pragma once
 
 #include "mi_ai.h"
-#include "pthread.h"
-#include "semaphore.h"
 
-class audioIn{
-public:
-	static const unsigned int uFrameBufSize = 1024 * 2;	// buf size: 1024 * N = Nkb
+// Do not use typedef
+struct stAIFrame_t
+{
+	const static unsigned int uFrameBufSize = 2 * 1024; // N * 1024 = N KB
+	char apFrameBuf[uFrameBufSize];
+	MI_U32 u32Len;
 	
-	typedef struct
-	{
-		MI_AUDIO_BitWidth_e eBitWidth;
-		MI_AUDIO_SoundMode_e eSoundmode;
-		char apFrameBuf[uFrameBufSize];
-		MI_U64 u64TimeStamp;
-		MI_U32 u32Len;
-		MI_BOOL bAcousticEventDetected;
-		MI_BOOL bLoudSoundDetected;
-	}AudioInFrame_t;
-	
-	static audioIn *getInstance(){
-		static audioIn audioIn;
-		return &audioIn;
-	};
-	
-	int setPubAttr(MI_AUDIO_BitWidth_e eBitWidth, MI_AUDIO_SampleRate_e eSample);
-	int setChnOutputPortDepth();
-	int enable();
-	int disable();	
-	int rcvStream(AudioInFrame_t *pAudioFrame);
-	int enableAed();
-	int disableAed();
-	int setVqeVolume(int val);
-	
-private:
-	sem_t sem;
-	bool bFrameBufBusy;				// 音频帧缓冲区有数据
-	bool enAed;
-	MI_AUDIO_DEV audioDev;			// AI 设备号
-	MI_AI_CHN audioChn;				// 使能设备下的chanel
-	pthread_t streamRouteTid;		// 播放音频流线程的tid.
-	bool streamRouteRunning;		// stream 线程的运行状态。
-	AudioInFrame_t stAudioInFrame;	// 音频流的数据，包含音频+AED结果。
-
-	// 单例模式需要将如下4个函数声明为private 的。
-	audioIn();
-	~audioIn();
-	audioIn(const audioIn&);
-	audioIn& operator=(const audioIn&);
-
-	// 类中创建线程，必须使用一个空格函数传递this 指针。
-	void *route(void *arg);
-	static void *__route(void *arg);
-	
-	int enableDev();
-	int disableDev();
-	int enableChanel();
-	int disableChanel();
-	int streamRouteCreate();
-	int streamRouteDestroy();
+	MI_U64 u64TimeStamp;
+	MI_BOOL bLoudSoundDetected;
+	MI_BOOL bAcousticEventDetected;
 };
 
-#endif
+class AudioIn{
+public:
+	static AudioIn *getInstance();
+	
+	int enable();
+	int disable();	
+
+	int setVolume(int volumeDb);		// 设置音量
+	int recvStream(stAIFrame_t *pAudioFrame);		// 获取一帧音频数据
+	
+	int enableDev();					// 启用AI 设备
+	int disableDev();					// 禁用AI 设备
+	
+	int enableChanel();					// 启用AI 通道
+	int disableChanel();				// 禁用AI 通道
+	
+	int enableAed();					// 启用AED 音频事件监测
+	int disableAed();					// 禁用AED 音频事件监测
+
+	int setPubAttr();					// 设置公有属性
+	int setChnOutputPortDepth(MI_U32 u32UserFrameDepth, MI_U32 u32BufQueueDepth);	// 设置输出端口队列深度
+	
+private:
+	// 单例模式需要将如下4个函数声明为private 的。
+	AudioIn();
+	~AudioIn();
+	AudioIn(const AudioIn&);
+	AudioIn& operator=(const AudioIn&);
+
+	bool bInitialized = false;
+
+	/* AI 初始化相关参数 */
+	const MI_AUDIO_DEV audioDev = 0;	// AI 设备号
+	const MI_AO_CHN audioChn = 0;		// AI 通道号
+	const MI_AUDIO_BitWidth_e eBitWidth = E_MI_AUDIO_BIT_WIDTH_16;		// 位宽
+	const MI_AUDIO_SampleRate_e eSample = E_MI_AUDIO_SAMPLE_RATE_16000;	// 采样率
+	const MI_AUDIO_SoundMode_e eSoundmode = E_MI_AUDIO_SOUND_MODE_MONO;	// 单声道和立体声。
+	const unsigned int u32PtNumPerFrm = 160;	// 每一帧的采样点数，可以不必128 字对齐
+	//const unsigned int u32PtNumPerFrm = 1024;	// 每一帧的采样点数，可以不必128 字对齐
+	const int defVol = 19;				// 默认音量
+};
+

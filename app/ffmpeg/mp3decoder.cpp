@@ -15,12 +15,6 @@ qanthink 版权所有。
 
 using namespace std;
 
-Mp3Decoder* Mp3Decoder::getInstance()
-{
-	static Mp3Decoder ffmpeg;
-	return &ffmpeg;
-}
-
 Mp3Decoder::Mp3Decoder()
 {
 	cout << "Call Mp3Decoder::Mp3Decoder()." << endl;
