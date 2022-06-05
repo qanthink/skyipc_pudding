@@ -75,7 +75,7 @@ link_directories(
 	live555rtsp
 	testing
 	#wifi
-	#wifi/lib/${tools}
+	wifi/lib/${ToolType}
 	../thirdparty/live555/lib
 	ffmpeg
 	queue
@@ -100,17 +100,18 @@ target_link_libraries(skyipc
 	#wifi
 	live555rtsp 
 	ffmpeg
-	spipanel 
-	ethernet
+	spipanel ethernet
 	sky_avtp
-	pthread dl 
+	audio_player
+	pthread dl
 )
 
 #strip 剪裁
 add_custom_target(stripTask
-    COMMAND echo ================ make strip task ================
-    COMMAND ls -l -h skyipc
-    COMMAND ${CMAKE_STRIP} -s skyipc
-    COMMAND ls -l -h skyipc
+	COMMAND echo ================ make strip task ================
+	COMMAND ls -l -h sky*
+	COMMAND ${CMAKE_STRIP} -s skyipc
+	#COMMAND ${CMAKE_STRIP} -s skynvr
+	COMMAND ls -l -h sky*
 )
 

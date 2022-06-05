@@ -1,9 +1,11 @@
-/*----------------------------------------------------------------聽
-sigma star鐗堟潈鎵鏈夈?浣滆咃細
-鏃堕棿锛?020.7.10
+/*---------------------------------------------------------------- 
+xxx 版权所有。
+作者：
+时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#include "iostream"
+#include <iostream>
+#include <signal.h>
 
 #include "sys.h"
 #include "sensor.hpp"
@@ -13,17 +15,20 @@ sigma star鐗堟潈鎵鏈夈?浣滆咃細
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
+#include "rgn.h"
+//#include "wifi.h"
+
 #include "aac.h"
 #include "aad.h"
-#include "mi_rgn.h"
-#include "wifi.h"
 #include "avtp.h"
-#include "testing.h"
 #include "ircut.h"
-#include "live555rtsp.h"
 #include "queue.h"
 #include "spipanel.h"
-#include "audio_player.h"
+#include "ethernet.h"
+#include "live555rtsp.h"
+#include "mp4container.h"
+
+#include "testing.h"
 
 using namespace std;
 
@@ -52,17 +57,18 @@ int main(int argc, const char *argv[])
 	Vif *pVif = Vif::getInstance();			// VIF 初始化
 	Vpe *pVpe = Vpe::getInstance();			// VPE 初始化
 	pVpe->createMainPort(Vpe::vpeMainPort);	// 创建VPE 主码流
+	//pVpe->setPortCropScale(Vpe::vpeMainPort, 0, 0, 0, 0, 1920, 1080);
 	//pVpe->createSubPort(Vpe::vpeSubPort);	// 创建VPE 子码流
 	//pVpe->createJpegPort(Vpe::vpeJpegPort);	// 创建VPE JPEG码流
-
-	sleep(1);
+	
 	Venc *pVenc = Venc::getInstance();		// VENC 初始化
 	pVenc->createMainStream(Venc::vencMainChn, NULL);	// 创建VENC主码流
 	//pVenc->createSubStream(Venc::vencSubChn, NULL);		// 创建VENC子码流
 	//pVenc->createJpegStream(Venc::vencJpegChn, NULL);	// 创建VENC-JPEG码流
 
+	// VENC 也可以实现图像的Crop 和Scale, 但是建议在VPE 中做。
 	//pVenc->setCrop(Venc::vencMainChn, (2560 - 1920) / 2, (1440 - 1080) / 2, 1920, 1080);
-
+	
 	// 绑定VIF -> VPE. 只需要绑定一次，用REALTIME
 	pSys->bindVif2Vpe(Vif::vifPort, Vpe::vpeInputPort, 20, 20, E_MI_SYS_BIND_TYPE_REALTIME, 0);
 	#if 0	// vpe -> venc
@@ -94,7 +100,7 @@ int main(int argc, const char *argv[])
 #endif
 	
 #if (1 == (USE_AO))
-	audioOut *pAudioOut = audioOut::getInstance();
+	AudioOut *pAudioOut = AudioOut::getInstance();
 #endif
 
 	#if (1 == (USE_WIFILINK))
@@ -137,7 +143,7 @@ int main(int argc, const char *argv[])
 	#endif
 
 	#if (1 == (USE_FFMPEG_SAVE_MP4))
-	Ffmpeg *pFfmpeg = Ffmpeg::getInstance();
+	Mp4Container *pMp4Container = Mp4Container::getInstance();
 	#endif
 
 	// 创建3个线程，分别用于测试AI, AO, 出图。
@@ -227,3 +233,4 @@ void sigHandler(int sig)
 		break;
 	}
 }
+

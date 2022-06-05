@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
-作者：allen
+xxx版权所有。
+作者：
 时间：2020.7.15
 ----------------------------------------------------------------*/
 
@@ -9,10 +9,11 @@ sigma star版权所有。
 	客户在熟悉接口之后，请删除本文件，根据自身需求开发上层应用。
 */
 
+#include <fstream>
+#include <iostream>
+#include <string.h>
+
 #include "testing.h"
-#include "iostream"
-#include "string.h"
-#include "ethernet.h"
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
@@ -20,10 +21,11 @@ sigma star版权所有。
 #include "aad.h"
 #include "rgn.h"
 #include "avtp.h"
-#include "wifi.h"
-#include "queue.h"
-#include "spipanel.h"
+//#include "wifi.h"
+#include "mp4container.h"
 #include "live555rtsp.h"
+#include "spipanel.h"
+#include "ethernet.h"
 #include "avtp_client.h"
 
 using namespace std;
@@ -72,7 +74,7 @@ void changeBit(unsigned int bitrate, unsigned char) 	// bit 2000 * 1000, 1200 * 
 
 	MI_S32 s32Ret = 0;
 	Venc *pVenc = Venc::getInstance();
-	s32Ret = pVenc->changeBitrate(0, bitrate);
+	s32Ret = pVenc->changeBitrate(0, bitrate / 1024);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call pVenc->changeBitrate(), errno = " << s32Ret << endl;
@@ -105,6 +107,7 @@ void getNextViFrame(unsigned char chn)
 	}
 	
 	int ret = 0;
+	#if 0
 	Venc::StreamPack_t streamPack;
 	memset(&streamPack, 0, sizeof(Venc::StreamPack_t));
 	Venc *pVenc = Venc::getInstance();
@@ -122,6 +125,7 @@ void getNextViFrame(unsigned char chn)
 	bool bIframe = true;
 	Mindsdk_Video *pMindsdk_video = Mindsdk_Video::getInstance();
 	pMindsdk_video->insertViFrame((void *)streamPack.u8Pack, streamPack.u32Len, bIframe, streamPack.u64PTS, chn);
+	#endif
 	
 	//cout << "Call MindSdk::getNextViFrame() end." << endl;
 	return;
@@ -189,7 +193,6 @@ void *routeAi(void *arg)
 {
 	unsigned char *pcmBuf = NULL;
 	unsigned char *aacBuf = NULL;
-	Aac *pAac = Aac::getInstance();
 
 	#if (1 == (USE_FAAC_FAAD))
 	Aac *pAac = Aac::getInstance();
@@ -353,36 +356,26 @@ void *routeAo(void *arg)
 
 	cout << "Success to call open() in routeAo()." << endl;
 
-	const unsigned int dataSize = 2 * 1024;
-	char dataBuf[dataSize] = {0};
-	MI_AUDIO_Frame_t stAudioFrame;
-	stAudioFrame.apVirAddr[0] = dataBuf;
-	stAudioFrame.apSrcPcmVirAddr[0] = (void *)dataBuf;
-	stAudioFrame.eBitwidth = E_MI_AUDIO_BIT_WIDTH_16;
-	stAudioFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_MONO;
-	stAudioFrame.u32SrcPcmLen = 2 * 1024;
 	do{
-		int ret = 0;
-		//memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
-
+		int readBytes = 0;
+		unsigned int dataBufMaxSize = 2 * 1024;
+		char dataBuf[dataBufMaxSize] = {0};
+		
 		cout << "Ready to call read() in routeAo()." << endl;
-		//ret = read(fd, stAudioFrame.apVirAddr[0], audioOut::frameMaxSize);
-		ret = read(fd, dataBuf, 2 * 1024);
-		if(-1 == ret)
+		readBytes = read(fd, dataBuf, dataBufMaxSize);
+		if(-1 == readBytes)
 		{
 			cerr << "Fail to call read(2), " << strerror(errno) << endl;
 			break;
 		}
-		else if(0 == ret)
+		else if(0 == readBytes)
 		{
 			cout << "Read file over!" << endl;
 			break;
 		}
 
 		//cout << "Send pcm stream" << endl;
-		//stAudioFrame.u32Len = ret;
-		AudioOut::getInstance()->sendStream(dataBuf, ret);
-		usleep(62 * 1000);	// 注意休眠时间，等待上一帧PCM 播放结束，再塞下一帧。
+		AudioOut::getInstance()->sendStream(dataBuf, readBytes);
 	}while(g_bRunning);
 
 	if(-1 != fd)
@@ -409,7 +402,7 @@ void *routeVideo(void *arg)
 		return NULL;
 	}
 
-#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
+	#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 	int fd = -1;
 	unsigned int uFrameCnt = 10 * 30;		// 写入文件的帧数。N * FPS = N秒。
 	//const char *filePath = "/customer/video.265";
@@ -421,17 +414,18 @@ void *routeVideo(void *arg)
 	{
 		cerr << "Fail to open " << filePath << ", " << strerror(errno) << endl;
 	}
-#endif
+	#endif
 
-#if (1 == (USE_AVTP_VIDEO))
+	#if (1 == (USE_AVTP_VIDEO))
 	const unsigned int ipSize = 16;
 	char ipAddress[ipSize] = {0};
 	Ethernet *pEthernet = Ethernet::getInstance();
 	pEthernet->getInterfaceIP("eth0", ipAddress, ipSize);
+	//pEthernet->getInterfaceIP("wlan0", ipAddress, ipSize);
 	cout << "Call pEthernet->getInterfaceIP();" << endl;
 	cout << "ipAddress = " << ipAddress << endl;
 	AvtpVideoClient avtpVideClient(ipAddress, "192.168.0.200");
-#endif
+	#endif
 	
 	while(g_bRunning)
 	{
@@ -454,26 +448,26 @@ void *routeVideo(void *arg)
 				break;
 			}
 
-		#if 0	// debug
+			#if 0	// debug
 			pVenc->printStreamInfo(&stStream);
-		#endif
+			#endif
 			
-		#if (1 == (USE_FFMPEG_SAVE_MP4))
-			Ffmpeg *pFfmpeg = Ffmpeg::getInstance();
-			s32Ret = pFfmpeg->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
+			#if (1 == (USE_FFMPEG_SAVE_MP4))
+			Mp4Container *pMp4Container = Mp4Container::getInstance();
+			s32Ret = pMp4Container->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			if(0 != s32Ret)
 			{
 				cerr << "Fail to call pFfmpeg->sendH26xFrame(). s32Ret = " << s32Ret << endl;
 			}
-		#endif
+			#endif
 
-		#if (1 == (USE_RTSPSERVER_LIVESTREAM))
+			#if (1 == (USE_RTSPSERVER_LIVESTREAM))
 			Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
 			//pLive555Rtsp->sendH26xFrame_block(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			pLive555Rtsp->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
-		#endif
+			#endif
 			
-		#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
+			#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 			if(0 != uFrameCnt)
 			{
 				--uFrameCnt;
@@ -495,11 +489,32 @@ void *routeVideo(void *arg)
 					cout << "Write local H.26X file over. Close file." << endl;
 				}
 			}
-		#endif
+			#endif
 			
-		#if (1 == (USE_AVTP_VIDEO))
+			#if (1 == (USE_AVTP_VIDEO))
 			avtpVideClient.sendVideoFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
-		#endif
+			if(!g_bRunning)
+			{
+				avtpVideClient.stop();
+			}
+			double lossRate = avtpVideClient.getLossRate();
+			if(lossRate >= 0.9)
+			{
+				pVenc->changeBitrate(Venc::vencMainChn, 0.5 * 1024);
+			}
+			else if(lossRate >= 0.7)
+			{
+				pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
+			}
+			else if(lossRate > 0.4)
+			{
+				pVenc->changeBitrate(Venc::vencMainChn, 2 * 1024);
+			}
+			else
+			{
+				pVenc->changeBitrate(Venc::vencMainChn, 4 * 1024);
+			}
+			#endif
 		}
 
 		s32Ret = pVenc->releaseStream(u32VencChn, &stStream);
@@ -509,13 +524,13 @@ void *routeVideo(void *arg)
 		}
 	}
 
-#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
+	#if (1 == (USE_VENC_SAVE_LOCAL_FILE))
 	if(-1 != fd)
 	{
 		close(fd);
 		fd = -1;
 	}
-#endif
+	#endif
 
 	return NULL;
 }
@@ -545,7 +560,7 @@ void *routeOsd(void *arg)
 		Udper *pUdper = Udper::getInstance();
 		#endif
 
-		// 第一行，显示音视频码率
+		// 第0行，显示音视频码率
 		MI_S32 s32AudioKbps = 0;
 		MI_S32 s32VideoKbps = 0;
 		#if (1 == (USE_MINDSDK_VIDEO))
@@ -555,7 +570,7 @@ void *routeOsd(void *arg)
 		snprintf(str, u32StrSize, "Audio:%2dkbps Video:%4dkbps", s32AudioKbps, s32VideoKbps);
 		pRgn->setText(Rgn::rgnHandle0, str, I4_RED, DMF_Font_Size_32x32);
 
-		// 第二行，显示wifi 信号强度
+		// 第1行，显示wifi 信号强度
 		MI_S32 s32WifiSignal = 0;
 		#if (1 == (TEST_WIFI))
 		s32WifiSignal = Wifi::getInstance()->getApRssi();
@@ -563,7 +578,7 @@ void *routeOsd(void *arg)
 		snprintf(str, u32StrSize, "Wifi: %2d dB", s32WifiSignal);
 		pRgn->setText(Rgn::rgnHandle1, str, I4_RED, DMF_Font_Size_32x32);
 
-		// 第三/四行，显示本地和上级设备MAC
+		// 第2/3行，显示本地和上级设备MAC
 		const unsigned macBufSize = 32;
 		char macBuf[macBufSize] = {0};
 		#if (1 == (TEST_WIFI))
@@ -578,16 +593,16 @@ void *routeOsd(void *arg)
 		snprintf(str, u32StrSize, "AP MAC: %s", macBuf);
 		pRgn->setText(Rgn::rgnHandle3, str, I4_RED, DMF_Font_Size_32x32);
 
-		// 第五行，显示视频码率
+		// 第4行，显示视频码率
 		double dBitRate = (double)currentBitRate / (1000 * 1000);
 		snprintf(str, u32StrSize, "Video bitrate: %3.2fMbps", dBitRate);
 		pRgn->setText(Rgn::rgnHandle4, str, I4_RED, DMF_Font_Size_32x32);
 
-		// 第六/七行，预留
-		pRgn->setText(Rgn::rgnHandle5, "line 6: green, green, green", I4_GREEN, DMF_Font_Size_32x32);
-		pRgn->setText(Rgn::rgnHandle5, "line 7: black, black, black", I4_BLACK, DMF_Font_Size_32x32);
+		// 第5/6行，预留
+		pRgn->setText(Rgn::rgnHandle5, "line 5: green, green, green", I4_GREEN, DMF_Font_Size_32x32);
+		pRgn->setText(Rgn::rgnHandle6, "line 6: black, black, black", I4_BLACK, DMF_Font_Size_32x32);
 	
-		sleep(1);
+		this_thread::sleep_for(chrono::seconds(1));
 	}
 
 	return NULL;
