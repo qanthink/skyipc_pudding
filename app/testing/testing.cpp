@@ -424,7 +424,7 @@ void *routeVideo(void *arg)
 	//pEthernet->getInterfaceIP("wlan0", ipAddress, ipSize);
 	cout << "Call pEthernet->getInterfaceIP();" << endl;
 	cout << "ipAddress = " << ipAddress << endl;
-	AvtpVideoClient avtpVideClient(ipAddress, "192.168.0.200");
+	AvtpVideoClient avtpVideClient("192.168.0.200");
 	thread thChangeBitrate(avtpChangeKbps, &avtpVideClient, 3);
 	#endif
 	
@@ -496,7 +496,7 @@ void *routeVideo(void *arg)
 			avtpVideClient.sendVideoFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			if(!g_bRunning)
 			{
-				avtpVideClient.stop();
+				//avtpVideClient.stop();
 			}
 			#endif
 		}
@@ -539,23 +539,26 @@ int avtpChangeKbps(AvtpVideoClient *pAvtpVideoClient, unsigned int timeSec)
 		this_thread::sleep_for(chrono::seconds(timeSec));
 	
 		Venc *pVenc = Venc::getInstance();
-		double lossRate = pAvtpVideoClient->getLossRate();
+		double lossRate = 0.0;
+		#if 0
+		//lossRate = pAvtpVideoClient->getLossRate();
 		if(lossRate >= 0.9)
 		{
-			pVenc->changeBitrate(Venc::vencMainChn, 0.5 * 1024);
+			pVenc->changeBitrate(Venc::vencMainChn, 0.1 * 1024);
 		}
 		else if(lossRate >= 0.7)
 		{
-			pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
+			pVenc->changeBitrate(Venc::vencMainChn, 0.4 * 1024);
 		}
 		else if(lossRate > 0.4)
 		{
-			pVenc->changeBitrate(Venc::vencMainChn, 1.5 * 1024);
+			pVenc->changeBitrate(Venc::vencMainChn, 0.7 * 1024);
 		}
 		else
 		{
-			pVenc->changeBitrate(Venc::vencMainChn, 2 * 1024);
+			pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
 		}
+		#endif
 
 		//cout << "lossRate = " << lossRate << endl;
 	}
