@@ -3,6 +3,7 @@
 add_library(testing ${DIR_APP_SRC} testing.cpp)
 
 include_directories(
+	../system/sensor
 	../system/venc
 	../system/audio_ai
 	../system/audio_ao

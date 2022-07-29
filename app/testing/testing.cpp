@@ -14,6 +14,7 @@ xxx版权所有。
 #include <string.h>
 
 #include "testing.h"
+#include "sensor.hpp"
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
@@ -417,13 +418,6 @@ void *routeVideo(void *arg)
 	#endif
 
 	#if (1 == (USE_AVTP_VIDEO))
-	const unsigned int ipSize = 16;
-	char ipAddress[ipSize] = {0};
-	Ethernet *pEthernet = Ethernet::getInstance();
-	pEthernet->getInterfaceIP("eth0", ipAddress, ipSize);
-	//pEthernet->getInterfaceIP("wlan0", ipAddress, ipSize);
-	cout << "Call pEthernet->getInterfaceIP();" << endl;
-	cout << "ipAddress = " << ipAddress << endl;
 	AvtpVideoClient avtpVideClient("192.168.0.200");
 	thread thChangeBitrate(avtpChangeKbps, &avtpVideClient, 3);
 	#endif
@@ -464,7 +458,6 @@ void *routeVideo(void *arg)
 
 			#if (1 == (USE_RTSPSERVER_LIVESTREAM))
 			Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
-			//pLive555Rtsp->sendH26xFrame_block(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			pLive555Rtsp->sendH26xFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			#endif
 			
@@ -493,6 +486,7 @@ void *routeVideo(void *arg)
 			#endif
 			
 			#if (1 == (USE_AVTP_VIDEO))
+			cout << stStream.pstPack[i].u32Len << endl;
 			avtpVideClient.sendVideoFrame(stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
 			if(!g_bRunning)
 			{
@@ -539,25 +533,43 @@ int avtpChangeKbps(AvtpVideoClient *pAvtpVideoClient, unsigned int timeSec)
 		this_thread::sleep_for(chrono::seconds(timeSec));
 	
 		Venc *pVenc = Venc::getInstance();
-		double lossRate = 0.0;
-		#if 0
-		//lossRate = pAvtpVideoClient->getLossRate();
-		if(lossRate >= 0.9)
+		Sensor *pSensor = Sensor::getInstance();
+		double lossRate = pAvtpVideoClient->getLossRate();
+		cout << "lossRate = " << lossRate << endl;
+		#if 1
+		if(lossRate > 0.9)
 		{
 			pVenc->changeBitrate(Venc::vencMainChn, 0.1 * 1024);
+			//pSensor->setFps(15);
+			pAvtpVideoClient->changeFps10s(10);
 		}
-		else if(lossRate >= 0.7)
+		else if(lossRate > 0.7)
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 0.25 * 1024);
+			pAvtpVideoClient->changeFps10s(20);
+		}
+		else if(lossRate > 0.5)
 		{
 			pVenc->changeBitrate(Venc::vencMainChn, 0.4 * 1024);
+			pAvtpVideoClient->changeFps10s(50);
 		}
-		else if(lossRate > 0.4)
+		else if(lossRate > 0.3)
+		{
+			pVenc->changeBitrate(Venc::vencMainChn, 0.55 * 1024);
+			pAvtpVideoClient->changeFps10s(100);
+		}
+		else if(lossRate > 0.1)
 		{
 			pVenc->changeBitrate(Venc::vencMainChn, 0.7 * 1024);
+			pAvtpVideoClient->changeFps10s(150);
 		}
 		else
 		{
-			pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
+			pVenc->changeBitrate(Venc::vencMainChn, 0.85 * 1024);
+			pAvtpVideoClient->changeFps10s(200);
 		}
+		#else
+		pVenc->changeBitrate(Venc::vencMainChn, 0.5 * 1024);
 		#endif
 
 		//cout << "lossRate = " << lossRate << endl;
