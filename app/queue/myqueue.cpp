@@ -4,94 +4,108 @@
 时间：2021.8.13
 ----------------------------------------------------------------*/
 
+/*
+修订：
+
+2023.04  增加了空间名引用，using namespace std;
+*/
+
+#include <iostream>
 #include "myqueue.h"
-#include "iostream"
+
+using namespace std;
 
 void testQueue()
 {
-#if 0
+#if 1
 	int in = 0;
 	int out = 0;
-	Queue<int> queue(3);
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	const unsigned int queueDepths = 3;
+	MyQueue<int> intQueue(queueDepths);
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 #if 1
-	queue.push(1);
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	in = 1;
+	intQueue.push(&in);
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 	
-	queue.pop(&out);
+	intQueue.pop(&out);
 	cout << __LINE__ << ": out " << out << endl;
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 #endif
-	queue.push(5);
-	queue.output();
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
-	queue.push(6);
-	queue.output();
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
-	queue.push(7);
-	queue.output();
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
-	queue.push(8);
-	queue.output();
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	in = 5;
+	intQueue.push(&in);
+	cout << intQueue;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
+	in = 6;
+	intQueue.push(&in);
+	cout << intQueue;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
+	in = 7;
+	intQueue.push(&in);
+	cout << intQueue;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
+	in = 8;
+	intQueue.push(&in);
+	cout << intQueue;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 
-	queue.pop(&out);
-	queue.output();
+	intQueue.pop(&out);
+	cout << intQueue;
 	cout << __LINE__ << ": out " << out << endl;
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
-	queue.pop(&out);
-	queue.output();
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
+	intQueue.pop(&out);
+	cout << intQueue;
 	cout << __LINE__ << ": out " << out << endl;
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 
-	queue.pop(&out);
-	queue.output();
+	intQueue.pop(&out);
+	cout << intQueue;
 	cout << __LINE__ << ": out " << out << endl;
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 
-	cout << __LINE__ << ": return " << queue.pop(&out) << endl;
+	cout << __LINE__ << ": return " << intQueue.pop(&out) << endl;
 	cout << __LINE__ << ": out " << out << endl;
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 
-	queue.clear();
-	queue.output();
-	cout << __LINE__ << ": is empty() " << queue.isEmpty() << endl;
-	cout << __LINE__ << ": is full() " << queue.isFull() << endl;
-	cout << __LINE__ << ": is depth() " << queue.depth() << endl;
-	cout << __LINE__ << ": is maxDepth() " << queue.maxDepth() << endl;
+	intQueue.clear();
+	cout << intQueue;
+	cout << __LINE__ << ": is empty() " << intQueue.isEmpty() << endl;
+	cout << __LINE__ << ": is full() " << intQueue.isFull() << endl;
+	cout << __LINE__ << ": is depth() " << intQueue.depth() << endl;
+	cout << __LINE__ << ": is maxDepth() " << intQueue.depths() << endl;
 #endif
 }
 

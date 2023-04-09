@@ -7,10 +7,13 @@
 /*
 修订：
 2022.03  增加了锁机制，解决了多线程下同时操作push() 和pop() 的安全问题。
+
+2023.04  修改了文件名，queue.h -> myqueue.h, 避免与其它开源项目冲突。
+		修改了类名，Queue -> MyQueue.
 */
 
-#ifndef __QUEUE_H__
-#define __QUEUE_H__
+#ifndef __MY_QUEUE_H__
+#define __MY_QUEUE_H__
 
 /*
 C++ 自带的队列，不具备定长功能。
@@ -31,11 +34,11 @@ tail 和head 的减法运算，可以用来判断队列是否为空、是否为�
 void testQueue();
 
 template <class T>
-class Queue{
+class MyQueue{
 public:
-	Queue();
-	Queue(const unsigned int depth);
-	~Queue();
+	MyQueue();
+	MyQueue(const unsigned int depth);
+	~MyQueue();
 
 	int push(const T *pData);		// 压栈。如果队列满，会丢弃队列头，再入栈。
 	int push(const T *pData, int force);	// 压栈。当队列满时，可通过force约束是否强制入栈。
@@ -50,7 +53,7 @@ public:
 
 	// 将运算符重载声明为友元函数的方法之一：类内声明模板别名.
 	template <typename U>
-	friend std::ostream &operator<<(std::ostream & os, const Queue<U> &t);
+	friend std::ostream &operator<<(std::ostream & os, const MyQueue<U> &t);
 
 private:
 	T *pHead = NULL;
@@ -69,7 +72,7 @@ private:
 };
 
 template <class T>
-Queue<T>::Queue()
+MyQueue<T>::MyQueue()
 {
 	dataArray = NULL;
 	pHead = NULL;
@@ -79,15 +82,15 @@ Queue<T>::Queue()
 }
 
 template <class T>
-Queue<T>::Queue(const unsigned int depth)
+MyQueue<T>::MyQueue(const unsigned int depth)
 {
 	setQueueDepth(depth);
 }
 
 template <class T>
-Queue<T>::~Queue()
+MyQueue<T>::~MyQueue()
 {
-	std::cout << "Call Queue::~Queue()." << std::endl;
+	std::cout << "Call MyQueue::~MyQueue()." << std::endl;
 	if(NULL != dataArray)
 	{
 		free(dataArray);
@@ -97,11 +100,11 @@ Queue<T>::~Queue()
 	pTail = NULL;
 	queueMaxDepth = 0;
 	curDepth = 0;
-	std::cout << "Call Queue::~Queue() end." << std::endl;
+	std::cout << "Call MyQueue::~MyQueue() end." << std::endl;
 }
 
 template <class T>
-int Queue<T>::setQueueDepth(unsigned int depth)
+int MyQueue<T>::setQueueDepth(unsigned int depth)
 {
 	//std::cout << "sizeof(T) = " << sizeof(T) << std::endl;	
 	//dataArray = new T(depth);	// 不清楚new 运算符申请的空间，为何不能用。
@@ -132,7 +135,7 @@ int Queue<T>::setQueueDepth(unsigned int depth)
 }
 
 template <class T>
-int Queue<T>::push(const T *pData)
+int MyQueue<T>::push(const T *pData)
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	//std::cout << "push" << std::endl;
@@ -164,7 +167,7 @@ int Queue<T>::push(const T *pData)
 }
 
 template <class T>
-int Queue<T>::push(const T *pData, int force)
+int MyQueue<T>::push(const T *pData, int force)
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	//std::cout << "push" << std::endl;
@@ -205,7 +208,7 @@ int Queue<T>::push(const T *pData, int force)
 }
 
 template <class T>
-int Queue<T>::pop(T *pData)
+int MyQueue<T>::pop(T *pData)
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	//std::cout << "pop" << std::endl;
@@ -234,7 +237,7 @@ int Queue<T>::pop(T *pData)
 }
 
 template <class T>
-int Queue<T>::clear()
+int MyQueue<T>::clear()
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	//std::cout << "clear" << std::endl;
@@ -260,7 +263,7 @@ int Queue<T>::clear()
 }
 
 template <class T>
-int Queue<T>::relinquish()
+int MyQueue<T>::relinquish()
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	//std::cout << "relinquish" << std::endl;
@@ -289,7 +292,7 @@ int Queue<T>::relinquish()
 }
 
 template <class T>
-bool Queue<T>::isEmpty()
+bool MyQueue<T>::isEmpty()
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	bool bEmpty = false;
@@ -307,7 +310,7 @@ bool Queue<T>::isEmpty()
 }
 
 template <class T>
-bool Queue<T>::isFull()
+bool MyQueue<T>::isFull()
 {
 	while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	bool bFull = false;
@@ -326,7 +329,7 @@ bool Queue<T>::isFull()
 
 
 template <class T>
-unsigned int Queue<T>::depth() const
+unsigned int MyQueue<T>::depth() const
 {
 	//while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	unsigned int depth = 0;
@@ -336,7 +339,7 @@ unsigned int Queue<T>::depth() const
 }
 
 template <class T>
-unsigned int Queue<T>::depths() const
+unsigned int MyQueue<T>::depths() const
 {
 	//while (lock.test_and_set(std::memory_order_acquire));	// 上锁
 	unsigned int depth = 0;
@@ -347,7 +350,7 @@ unsigned int Queue<T>::depths() const
 
 #if 1
 template <typename U>
-std::ostream &operator<<(std::ostream& os, const Queue<U>& u)
+std::ostream &operator<<(std::ostream& os, const MyQueue<U>& u)
 {
 	int i = 0;
 	U *move = NULL;
@@ -372,7 +375,7 @@ std::ostream &operator<<(std::ostream& os, const Queue<U>& u)
 #endif
 
 template <class T>
-bool Queue<T>::checkOK()
+bool MyQueue<T>::checkOK()
 {
 	if(NULL != dataArray && NULL != pHead && NULL != pTail && (curDepth <= queueMaxDepth))
 	{
@@ -383,7 +386,7 @@ bool Queue<T>::checkOK()
 }
 
 template <class T>
-void Queue<T>::headIncrease()
+void MyQueue<T>::headIncrease()
 {
 	if(!checkOK())
 	{
@@ -398,7 +401,7 @@ void Queue<T>::headIncrease()
 }
 
 template <class T>
-void Queue<T>::tailIncrease()
+void MyQueue<T>::tailIncrease()
 {
 	if(!checkOK())
 	{
