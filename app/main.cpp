@@ -22,7 +22,7 @@ xxx 版权所有。
 #include "aad.h"
 #include "avtp.h"
 #include "ircut.h"
-#include "queue.h"
+#include "myqueue.h"
 #include "spipanel.h"
 #include "ethernet.h"
 #include "live555rtsp.h"
