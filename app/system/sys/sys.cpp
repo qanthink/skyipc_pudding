@@ -1,13 +1,13 @@
 /*---------------------------------------------------------------- 
-sigma star版权所有。
+xxx版权所有。
 作者：
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
 #include "sys.h"
-#include "vpe.h"
-#include "iostream"
-#include "string.h"
+#include "mi_venc.h"
+#include <iostream>
+#include <string.h>
 
 using namespace std;
 
@@ -174,7 +174,7 @@ MI_S32 Sys::bindVif2Vpe(MI_U32 u32VifPortID, MI_U32 u32VpeChnID, MI_U32 u32SrcFr
 返回值：成功，返回0; 失败，返回错误码。
 注--意：
 -----------------------------------------------------------------------------*/
-MI_S32 Sys::bindVpe2Venc(MI_U32 u32VpePortID, MI_U32 u32VencChnID, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam)
+MI_S32 Sys::bindVpe2Venc(MI_U32 u32VpePortID, MI_U32 u32VencChnID, MI_U32 u32SrcFrmrate, MI_U32 u32DstFrmrate, MI_SYS_BindType_e eBindType, MI_U32 u32BindParam)
 {
 	cout << "Call Sys::bindVpe2Venc()." << endl;
 
@@ -188,19 +188,23 @@ MI_S32 Sys::bindVpe2Venc(MI_U32 u32VpePortID, MI_U32 u32VencChnID, MI_U32 u32Src
 	MI_SYS_ChnPort_t stDstChnPort;
 	memset(&stDstChnPort, 0, sizeof(MI_SYS_ChnPort_t));
 	stDstChnPort.eModId = E_MI_MODULE_ID_VENC;
-	if(Vpe::vpeJpegPort == u32VpePortID)
+
+	// 获取VENC 设备ID.
+	MI_S32 s32Ret = 0;
+	MI_U32 u32DevId = -1;
+	s32Ret = MI_VENC_GetChnDevid(u32VencChnID, &u32DevId);
+	if(0 != s32Ret)
 	{
-		stDstChnPort.u32DevId = 1;
+		cerr << "Fail to call MI_VENC_GetChnDevid() in Sys::bindVpe2Venc(). s32Ret = " << s32Ret << endl;
+		return s32Ret;
 	}
-	else
-	{
-		stDstChnPort.u32DevId = 0;
-	}
+	cout << "In Sys::bindVpe2Venc(), u32DevId = " << u32DevId << endl;
+	
+	stDstChnPort.u32DevId = u32DevId;
 	stDstChnPort.u32ChnId = u32VencChnID;
 	stDstChnPort.u32PortId = 0;
 
 	// MI_S32 MI_SYS_BindChnPort(MI_SYS_ChnPort_t *pstSrcChnPort, MI_SYS_ChnPort_t *pstDstChnPort, MI_U32 u32SrcFrmrate,  MI_U32 u32DstFrmrate);
-	MI_S32 s32Ret = 0;	
 	s32Ret = MI_SYS_BindChnPort2(&stSrcChnPort, &stDstChnPort, u32SrcFrmrate, u32DstFrmrate, eBindType, 0);
 	//s32Ret = MI_SYS_BindChnPort(&stSrcChnPort, &stDstChnPort, u32SrcFrmrate, u32DstFrmrate);
 	if(0 != s32Ret)

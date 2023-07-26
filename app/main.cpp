@@ -6,29 +6,32 @@ xxx 版权所有。
 
 #include <iostream>
 #include <signal.h>
+#include <thread>
 
+#include "testing.h"
 #include "sys.h"
-#include "sensor.hpp"
+#include "sensor.h"
 #include "vif.h"
+#include "isp.h"
 #include "vpe.h"
-#include "divp.h"
+//#include "divp.h"
 #include "venc.h"
 #include "ai.hpp"
 #include "ao.hpp"
 #include "rgn.h"
-//#include "wifi.h"
+#if (1 == (USE_UVC))
+#include "uvc_uac.h"
+#endif
 
-#include "aac.h"
-#include "aad.h"
-#include "avtp.h"
-#include "ircut.h"
-#include "myqueue.h"
-#include "spipanel.h"
-#include "ethernet.h"
+//#include "aac.h"
+//#include "aad.h"
+//#include "avtp.h"
+#include "ircutled.h"
+//#include "spipanel.h"
+//#include "ethernet.h"
 #include "live555rtsp.h"
-#include "mp4container.h"
+//#include "mp4container.h"
 
-#include "testing.h"
 
 using namespace std;
 
@@ -45,173 +48,266 @@ int main(int argc, const char *argv[])
 
 	signal(SIGINT, sigHandler);
 
-#if 1
-	IrCut::getInstance()->resetFilter();	// ircut滤波片复位
-	IrCut::getInstance()->closeFilter();
+	/* ==================== 第一部分，系统初始化 ==================== */
+	#if 1
+	IrCutLed *pIrCutLed = IrCutLed::getInstance();
+	IrCutLed::getInstance()->openFilter();
 
 	// 系统初始化
 	Sys *pSys = Sys::getInstance();
-	// 出图模块初始化。数据流向：sensor -> vif -> vpe -> venc -> 应用处理。
-	Sensor *pSensor = Sensor::getInstance();// sensor 初始化
-	pSensor->setFps(20);
-	Vif *pVif = Vif::getInstance();			// VIF 初始化
-	Vpe *pVpe = Vpe::getInstance();			// VPE 初始化
-	pVpe->createMainPort(Vpe::vpeMainPort);	// 创建VPE 主码流
-	//pVpe->setPortCropScale(Vpe::vpeMainPort, 0, 0, 0, 0, 1920, 1080);
-	//pVpe->createSubPort(Vpe::vpeSubPort);	// 创建VPE 子码流
-	//pVpe->createJpegPort(Vpe::vpeJpegPort);	// 创建VPE JPEG码流
-	
-	Venc *pVenc = Venc::getInstance();		// VENC 初始化
-	pVenc->createMainStream(Venc::vencMainChn, NULL);	// 创建VENC主码流
-	//pVenc->createSubStream(Venc::vencSubChn, NULL);		// 创建VENC子码流
-	//pVenc->createJpegStream(Venc::vencJpegChn, NULL);	// 创建VENC-JPEG码流
+
+	// Sensor 初始化。数据流向：sensor -> vif -> vpe -> (DIVP) -> venc -> 应用处理。
+	Sensor *pSensor = Sensor::getInstance();	// sensor 初始化
+	pSensor->setFps(30);
+
+	unsigned int snrW = 0;
+	unsigned int snrH = 0;
+	pSensor->getSnrWH(&snrW, &snrH);
+	cout << "snrW, snrH = " << snrW << ", " << snrH << endl;
+
+	// VIF 初始化
+	Vif *pVif = Vif::getInstance();
+
+	// VPE 初始化，并绑定前级VIF.
+	Vpe *pVpe = Vpe::getInstance();
+	pSys->bindVif2Vpe(Vif::vifPort, Vpe::vpeInputPort, 30, 30, E_MI_SYS_BIND_TYPE_REALTIME, 0);
+
+	#if(1 == (USE_IQ_SERVER))
+	Isp *pIsp = Isp::getInstance();
+	pIsp->openIqServer(snrW, snrH, Vpe::vpeCh);
+	char iqFilePath[128] = {"/customer"};
+	pIsp->setIqServerDataPath(iqFilePath);
+	#endif
+
+	Venc *pVenc = Venc::getInstance();
+	#if (1 != (USE_UVC))
+	// 创建子码流
+	unsigned int subW = 1280;
+	unsigned int subH = 720;
+	pVpe->createPort(Vpe::vpeSubPort, subW, subH);
+	pVenc->createH26xStream(Venc::vencSubChn, subW, subH, Venc::vesTypeH264);
+	pVenc->changeBitrate(Venc::vencSubChn, 0.25 * 1024);
+	pSys->bindVpe2Venc(Vpe::vpeSubPort, Venc::vencSubChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+
+	// 创建主码流
+	pVpe->createPort(Vpe::vpeMainPort, snrW, snrH);
+	pVenc->createH26xStream(Venc::vencMainChn, snrW, snrH, Venc::vesTypeH264);
+	pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
+	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencMainChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+
+	// 创建jpeg码流
+	pVpe->createPort(Vpe::vpeMainPort, snrW, snrH);
+	pVenc->createJpegStream(Venc::vencJpegChn, snrW, snrH);
+	pVenc->changeBitrate(Venc::vencJpegChn, 10);
+	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencJpegChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#endif
 
 	// VENC 也可以实现图像的Crop 和Scale, 但是建议在VPE 中做。
 	//pVenc->setCrop(Venc::vencMainChn, (2560 - 1920) / 2, (1440 - 1080) / 2, 1920, 1080);
-	
-	// 绑定VIF -> VPE. 只需要绑定一次，用REALTIME
-	pSys->bindVif2Vpe(Vif::vifPort, Vpe::vpeInputPort, 20, 20, E_MI_SYS_BIND_TYPE_REALTIME, 0);
-	#if 0	// vpe -> venc
-	// 绑定VPE -> VENC, 如果有多路码流，则需要绑定多次。
-	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencMainChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
-	//pSys->bindVpe2Venc(Vpe::vpeSubPort, Venc::vencSubChn, 30, 30, E_MI_SYS_BIND_TYPE_REALTIME, 0);
-	//pSys->bindVpe2Venc(Vpe::vpeJpegPort, Venc::vencJpegChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
-	#else	// vpe -> divp -> venc
-	Divp *pDivp = Divp::getInstance();
-	pSys->bindVpe2Divp(Vpe::vpeMainPort, Divp::divpChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
-	pSys->bindDivp2Venc(Divp::divpChn, Venc::vencMainChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
 	#endif
-#endif
 
 	// 初始化OSD
 	#if (1 == (USE_OSD))
 	Rgn *pRgn = Rgn::getInstance();
 	#endif
 	
-	#if (1 == (USE_FAAC_FAAD))
 	// 音频编/解码初始化。aac = audio coder; aad = audio decoder.
+	#if (1 == (USE_FAAC_FAAD))
 	Aac *pAac = Aac::getInstance();
 	Aad *pAad = Aad::getInstance();
 	#endif
 
 	// AI 和AO 属于两个模块，分别初始化。
-#if (1 == (USE_AI))
+	#if (1 == (USE_AI))
 	AudioIn *pAudioIn = AudioIn::getInstance();
-#endif
+	#endif
 	
-#if (1 == (USE_AO))
+	#if (1 == (USE_AO))
 	AudioOut *pAudioOut = AudioOut::getInstance();
-#endif
-
-	#if (1 == (USE_WIFILINK))
-	Wifi *pWifi = Wifi::getInstance();
-	pWifi->enable();
 	#endif
 
 	/*
 		至此，SENSOR, VIF, VPE, VENC, AI, AO, OSD 均已初始化完成。
-		以下代码的功能为通过音视频传输协议将数据传输给另一台设备。
 	*/
+
+	/* ==================== 第二部分，应用初始化 ==================== */
+	// 音视频传输协议测试
+	#if (1 == (USE_AVTP_AUDIO))
+	AvtpAudioClient avtpAudioClient("192.168.0.200");
+	pAvtpAudioClient = &avtpAudioClient;
+	#endif
+
+	#if (1 == (USE_AVTP_VIDEO))
+	AvtpVideoClient avtpVideoClient("192.168.0.200");
+	pAvtpVideoClient = &avtpVideoClient;
+	thread thChangeBitrate(avtpChangeKbps, pAvtpVideoClient, 3);
+	#endif
+
+	// RTSP 推网络流
+	#if ((1 == (USE_RTSPSERVER_LOCALFILE)) || (1 == (USE_RTSPSERVER_LIVESTREAM_MAIN)) \
+			|| (1 == (USE_RTSPSERVER_LIVESTREAM_SUB)) || 1 == (USE_RTSPSERVER_LIVESTREAM_JPEG))
+	Live555Rtsp live555Rtsp;
+	pLive555Rtsp = &live555Rtsp;
+	#endif
 	
-	#if (1 == (USE_MINDSDK_AUDIO))
-	// avtp 传输协议。
-	Mindsdk_Audio& audio = *Mindsdk_Audio::getInstance();
-	audio.cb_recvAudio = recvAudio;
-	audio.start();
-	#endif
-
-	#if (1 == (USE_MINDSDK_VIDEO))
-	// avtp 传输协议。
-	Mindsdk_Video &Video = *Mindsdk_Video::getInstance();
-	Video.cb_startVideo = startVideo;
-	Video.cb_stopVideo = stopVideo;
-	Video.cb_getNextViFrame = getNextViFrame;
-	Video.cb_changeBit = changeBit;
-	Video.start();
-	#endif
-
-	int ret = 0;
+	// RTSP 推本地流
 	#if (1 == (USE_RTSPSERVER_LOCALFILE))
-	const char *fileName = NULL;
-	//fileName = "/mnt/linux/Downloads/videotest/1.mp4";
-	fileName = "/mnt/linux/Downloads/material/test.264";
-	thread thRtsp = thread(createRtspServerBy265LocalFile, (void *)fileName);
-	#endif
-	
-	#if (1 == (USE_RTSPSERVER_LIVESTREAM))
-	Live555Rtsp *pLive555Rtsp = Live555Rtsp::getInstance();
+	const char *filePath = NULL;
+	//filePath = "/mnt/linux/Downloads/videotest/1.mp4";
+	filePath = "/mnt/linux/Downloads/material/test.264";
+	const char *streamName = "stream";
+	pLive555Rtsp->addStream(filePath, streamName, emEncTypeH264);
 	#endif
 
+	// FFMPEG 保存MP4.
 	#if (1 == (USE_FFMPEG_SAVE_MP4))
 	Mp4Container *pMp4Container = Mp4Container::getInstance();
 	#endif
 
-	// 创建3个线程，分别用于测试AI, AO, 出图。
+	// 获取音频AI 的线程
 	#if (1 == (USE_AI))
-	thread thAi = thread(routeAi, (void *)NULL);
+	thread thAi(routeAi, (void *)NULL);
 	#endif
 
+	// AO 音频测试
 	#if (1 == (USE_AO))
 	// AO. 参数为本地音频文件的路径。写死的，16位宽 16000采样率
-	thread thAo = thread(routeAo, (void *)"/mnt/linux/Music/pcm_16000_16bit.pcm");
+	#if (1 == (USE_AO_LOCAL_FILE))
+	thread thAo(routeAoFromFile, (void *)"/mnt/linux/Audios/pcm/xiaopingguo_mono_16b_16000.pcm");
 	#endif
 
-	#if(1 == (USE_OSD))
+	// AO 音频测试，播放网络音频
+	#if (1 == (USE_AO_NET_PCM))
+	thread thAo(routeAoNetPcm, (void *)NULL);
+	#endif
+	#endif
+
 	// OSD 功能
-	thread thOsd = thread(routeOsd, (void *)NULL);
+	#if(1 == (USE_OSD))
+	thread thOsd(routeOsd, (void *)NULL);
 	#endif
 
-	#if (1 == (USE_VENC))
-	cout << "routeVideo" << endl;
-	// 测试出图的线程。参数为VENC 的通道号，支持主码流和子码流。
-	thread thVideo = thread(routeVideo, (void *)Venc::vencMainChn);
+	// 测试主码流
+	#if (1 == (USE_VENC_MAIN))
+	cout << "routeVideoMain" << endl;
+	thread thVideoMain(routeVideo, (void *)Venc::vencMainChn);
 	#endif
 
-	#if (1 == (USE_SPIPANEL))
-	cout << "route Spi panel" << endl;
-	thread thSpiPanel = thread(routeSpiPanel, (void *)NULL);
+	// 测试子码流
+	#if (1 == (USE_VENC_SUB))
+	cout << "routeVideoSub" << endl;
+	thread thVideoSub(routeVideo, (void *)Venc::vencSubChn);
 	#endif
 
+	// 测试JPEG 码流
+	#if (1 == (USE_VENC_JPEG))
+	cout << "routeVideoJpeg" << endl;
+	thread thVideoJpeg(routeVideo, (void *)Venc::vencJpegChn);
+	#endif
+
+	int ret = 0;
+	this_thread::sleep_for(chrono::microseconds(1));	// sleep for rtsp file read.
+	#if ((1 == (USE_RTSPSERVER_LOCALFILE)) || (1 == (USE_RTSPSERVER_LIVESTREAM_MAIN)) \
+		|| (1 == (USE_RTSPSERVER_LIVESTREAM_SUB)) || (1 == (USE_RTSPSERVER_LIVESTREAM_JPEG)))
+	thread thRtsp([&](){pLive555Rtsp->eventLoop();});		// lambda 表达式太好用啦！
+	thRtsp.detach();
+	#endif
+
+	// 测试SPI 屏。
+	#if (1 == (USE_SPI_PANEL))
+	thread thSpiPanel(routeSpiPanel, (void *)NULL);
+	#endif
+
+	// 测试网络
 	#if (1 == (TEST_ETHERNET))
 	testEthernet();
 	Ethernet *pEthernet = pEthernet->getInstance();
 	pEthernet->showWlanInfOnPanel();
 	#endif
 
+	// 测试UVC
+	#if (1 == (USE_UVC))
+	UvcUac *pUvcUac = UvcUac::getInstance();
+	pUvcUac->startUvc();
+	#endif
+
 	g_bRunning = true;		// sigHandler() 对其取反。
 	while(g_bRunning)
 	{
-		sleep(1);
+		sleep(0.5);
 		static int sleepCntSec = 0;
-		if(10 == sleepCntSec++)
+		if(10 == sleepCntSec++ * 2)
 		{
 			cout << "Progress running." << endl;
 			sleepCntSec = 0;
 		}
-	}
 
+		//int ret = 0;
+		#if (1 == USE_INTERACTION)
+		ret = interAction();
+		if(1 == ret)
+		{
+			break;
+		}
+		#endif
+	}
+	cout << "jump out from while(g_bRunning)" << endl;
+
+	/* ==================== 第三部分，应用析构 ==================== */
+	#if ((1 == (USE_RTSPSERVER_LOCALFILE)) || (1 == (USE_RTSPSERVER_LIVESTREAM_MAIN)) \
+		|| (1 == (USE_RTSPSERVER_LIVESTREAM_SUB)) || (1 == (USE_RTSPSERVER_LIVESTREAM_JPEG)))
+	//pLive555Rtsp->~Live555Rtsp();
+	cout << "rtsp join()" << endl;
+	//thRtsp.join();	// 前期做了detach.
+	cout << "rtsp join." << endl;
+	#endif
+	
 	#if (1 == (USE_AI))
 	thAi.join();
+	cout << "ai join." << endl;
 	#endif
 	
 	#if (1 == (USE_AO))
 	thAo.join();
+	cout << "ao join." << endl;
+	#endif
+									
+	#if (1 == (USE_VENC_JPEG))
+	thVideoJpeg.join();
+	cout << "vencJpeg join." << endl;
 	#endif
 	
-	#if (1 == (USE_VENC))
-	thVideo.join();
+	#if (1 == (USE_VENC_SUB))
+	thVideoSub.join();
+	cout << "vencSub join." << endl;
+	#endif
+
+	#if (1 == (USE_VENC_MAIN))
+	thVideoMain.join();
+	cout << "vencMain join." << endl;
 	#endif
 
 	#if (1 == (USE_OSD))
 	thOsd.join();
+	cout << "osd join." << endl;
 	#endif
 
-	#if (1 == (USE_RTSPSERVER_LIVESTREAM))
-	pLive555Rtsp->disable();
+	#if (1 == (USE_AVTP_VIDEO))
+	thChangeBitrate.join();
+	cout << "avtp video join." << endl;
 	#endif
 
-	#if (1 == (USE_RTSPSERVER_LOCALFILE))
-	thRtsp.join();
+	#if (1 == (USE_SPI_PANEL))
+	thSpiPanel.join();
+	cout << "spi panel join." << endl;
+	#endif
+
+	#if (1 == (USE_UVC))
+	pUvcUac->stopUvc();
+	#endif
+
+	#if(1 == (USE_IQ_SERVER))
+	pIsp->closeIqServer();
 	#endif
 
 	cout << "Sleep()" << endl;
@@ -220,8 +316,16 @@ int main(int argc, const char *argv[])
 	return 0;
 }
 
+/*-----------------------------------------------------------------------------
+描--述：信号处理函数。
+参--数：
+返回值：
+注--意：
+-----------------------------------------------------------------------------*/
 void sigHandler(int sig)
 {
+	cout << "Call sigHandler()." << endl;
+	
 	switch (sig)
 	{
 	case SIGINT:
@@ -232,5 +336,8 @@ void sigHandler(int sig)
 		g_bRunning = false;
 		break;
 	}
+
+	cout << "Call sigHandler() end." << endl;
+	return;
 }
 

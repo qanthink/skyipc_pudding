@@ -9,7 +9,7 @@ xxx版权所有。
 #include "mi_vif.h"
 
 class Vif{
-public:	
+public:
 	static Vif* getInstance();
 
 	MI_S32 enable();
@@ -32,7 +32,7 @@ private:
 	Vif& operator=(const Vif&);
 
 	bool bEnable = false;
-	const static MI_VIF_DEV vifDev = 0;
+	const static MI_VIF_DEV u32VifDev = 0;
 	const static MI_VIF_CHN u32VifChn = 0;
 };
 

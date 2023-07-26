@@ -34,8 +34,10 @@ int AudioIn::enable()
 	enableDev();
 	enableChanel();
 	setChnOutputPortDepth(1, 3);
-	//enableAed();
-	setVolume(defVol);
+	#if (1 == (USE_AED))
+	enableAed();
+	#endif
+	setVolume(volume);
 
 	return 0;
 }
@@ -85,9 +87,9 @@ int AudioIn::setPubAttr()
 	stAiAttr.eBitwidth = eBitWidth;
 	stAiAttr.eSamplerate = eSample;
 	stAiAttr.eSoundmode = eSoundmode;
-	stAiAttr.u32PtNumPerFrm = u32PtNumPerFrm;				// demo
-	stAiAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_MASTER;	// demo
-	//stAiAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_SLAVE; // MI_API DOC
+	stAiAttr.u32PtNumPerFrm = u32PtNumPerFrm;				// demo 和文档不符
+	stAiAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_MASTER;		// demo 和文档不符
+	//stAiAttr.eWorkmode = E_MI_AUDIO_MODE_I2S_SLAVE;		// MI_API DOC
 	//stAiAttr.u32PtNumPerFrm = stAiAttr.eSamplerate / 16;	// for aec
 		
 	//stAiAttr.WorkModeSetting.stI2sConfig.eFmt = E_MI_AUDIO_I2S_FMT_I2S_MSB;
@@ -302,6 +304,46 @@ int AudioIn::recvStream(stAIFrame_t *pstAIFrame)
 	MI_AUDIO_AecFrame_t stAecFrame;
 	memset(&stAudioFrame, 0, sizeof(MI_AUDIO_Frame_t));
 	memset(&stAecFrame, 0, sizeof(MI_AUDIO_AecFrame_t));
+	// ============================ 2023.4.16 Use GetFd and Select =======================
+	#if 0
+	/* get port fd */
+
+	MI_SYS_ChnPort_t stChnPort;
+	memset(&stChnPort, 0, sizeof(MI_SYS_ChnPort_t));
+	stChnPort.eModId = E_MI_MODULE_ID_AI;
+	stChnPort.u32DevId = audioDev;
+	stChnPort.u32ChnId = audioChn;
+	stChnPort.u32PortId = 0;
+
+	int ret = 0;
+	MI_S32 s32Fd = 0;
+	ret = MI_SYS_GetFd(&stChnPort, &s32Fd);
+	if(MI_SUCCESS != ret)
+	{
+		cerr << "Fail to call MI_SYS_GetFd() in AudioIn::recvStream(). ret = " << ret << endl;
+		return ret;
+	}
+
+	/* select 100ms */
+	fd_set readFdSet;
+	FD_ZERO(&readFdSet);
+	FD_SET(s32Fd, &readFdSet);
+
+	struct timeval stTimeOut;
+	stTimeOut.tv_sec = 0;
+	stTimeOut.tv_usec = 100 * 1000;
+	ret = select(s32Fd + 1, &readFdSet, NULL, NULL, &stTimeOut);
+	if(FD_ISSET(s32Fd, &readFdSet))
+	{
+		ret = MI_AI_GetFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame, 0);
+		if(MI_SUCCESS == ret)
+		{
+			/* do something */
+			// release resource.
+			//MI_AI_ReleaseFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame);
+		}
+	}
+	#else
 	s32Ret = MI_AI_GetFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame, -1);
 	//s32Ret = MI_AI_GetFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame, 100);
 	if(0 != s32Ret)
@@ -309,7 +351,11 @@ int AudioIn::recvStream(stAIFrame_t *pstAIFrame)
 		cerr << "Fail to call MI_AI_GetFrame(). s32Ret = 0x" << hex << s32Ret << endl;
 		return s32Ret;
 	}
+	#endif
 
+	//cout << "stAudioFrame.u32Len = " << stAudioFrame.u32Len << endl;
+
+	#if (1 == (USE_AED))
 	// 获取AED声音事件检测结果。占用CPU 和FLASH 很高。
 	MI_AI_AedResult_t stAedResult;
 	memset(&stAedResult, 0, sizeof(stAedResult));
@@ -319,6 +365,7 @@ int AudioIn::recvStream(stAIFrame_t *pstAIFrame)
 		cerr << "Fail to call MI_AI_GetAedResult(). s32Ret = 0x" << hex << s32Ret << endl;
 		return s32Ret;
 	}
+	#endif
 
 	#if 0	// debug
 	cout << "bAcousticEventDetected : bLoudSoundDetected = " << (int)stAedResult.bAcousticEventDetected << 
@@ -335,10 +382,14 @@ int AudioIn::recvStream(stAIFrame_t *pstAIFrame)
 	pstAIFrame->u32Len = stAudioFrame.u32SrcPcmLen[0];	
 	memcpy(pstAIFrame->apFrameBuf, stAudioFrame.apSrcPcmVirAddr[0], stAudioFrame.u32SrcPcmLen[0]);
 	#endif
+
+	#if (1 == (USE_AED))
 	pstAIFrame->bAcousticEventDetected = stAedResult.bAcousticEventDetected;
 	pstAIFrame->bLoudSoundDetected = stAedResult.bLoudSoundDetected;
+	#endif
 
-	s32Ret = MI_AI_ReleaseFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame);
+	//s32Ret = MI_AI_ReleaseFrame(audioDev, audioChn, &stAudioFrame, &stAecFrame);
+	s32Ret = MI_AI_ReleaseFrame(audioDev, audioChn, &stAudioFrame, NULL);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call MI_AI_ReleaseFrame(). s32Ret = 0x" << hex << s32Ret << endl;
@@ -351,7 +402,9 @@ int AudioIn::recvStream(stAIFrame_t *pstAIFrame)
 /*-----------------------------------------------------------------------------
 描--述：设置音量。
 参--数：volumeDb, 音量值，取值范围[0, 21].
-		针对Amic, 映射的增益值为[-6, 57]; 帧对Line in, 映射的增益值为[-6, 15]
+		针对Amic, 映射的增益值为[-6, 57], volumeDb 有效值[0, 21];
+		针对Line in, 映射的增益值为[-6, 15], volumeDb 有效值[0, 7];
+		针对DMIC, 映射的增益值为[0-24], volumeDb 有效值[0, 4];
 返回值：
 注--意：
 -----------------------------------------------------------------------------*/

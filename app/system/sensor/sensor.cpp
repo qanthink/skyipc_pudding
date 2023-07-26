@@ -4,14 +4,14 @@ xxx版权所有。
 时间：2020.7.10
 ----------------------------------------------------------------*/
 
-#include "sensor.hpp"
+#include "sensor.h"
 #include <iostream>
 #include <string.h>
 
 using namespace std;
 
 Sensor::Sensor()
-{	
+{
 	enable();
 }
 
@@ -218,10 +218,39 @@ int Sensor::getPlaneInfo(MI_SNR_PAD_ID_e ePADId, MI_SNR_PlaneInfo_t *pstPlaneInf
 	s32Ret = MI_SNR_GetPlaneInfo(ePADId, u32PlaneID, pstPlaneInfo);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call getPlaneInfo(), errno = " << s32Ret << endl;
+		cerr << "Fail to call MI_SNR_GetPlaneInfo() in Sensor::getPlaneInfo(), errno = " << s32Ret << endl;
 	}
 
 	cout << "Call Sensor::getPlaneInfo() end." << endl;
 	return s32Ret;	
 }
+
+/*-----------------------------------------------------------------------------
+描--述：获取sensor 分辨率。
+参--数：指向宽、高。
+返回值：成功，返回0; 失败，返回错误码。
+注--意：
+-----------------------------------------------------------------------------*/
+int Sensor::getSnrWH(unsigned int *pSnrW, unsigned int *pSnrH)
+{
+	cout << "Call Sensor::getSnrWH()." << endl;
+
+	MI_S32 s32Ret = 0;
+	MI_SNR_PlaneInfo_t stPlaneInfo;
+	
+	memset(&stPlaneInfo, 0, sizeof(MI_SNR_PlaneInfo_t));
+	s32Ret = MI_SNR_GetPlaneInfo(ePADId, u32PlaneID, &stPlaneInfo);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_SNR_GetPlaneInfo() in Sensor::getSnrWH(), errno = " << s32Ret << endl;
+		return s32Ret;
+	}
+
+	*pSnrW = stPlaneInfo.stCapRect.u16Width;
+	*pSnrH = stPlaneInfo.stCapRect.u16Height;
+	
+	cout << "Call Sensor::getSnrWH() end." << endl;
+	return 0;
+}
+
 

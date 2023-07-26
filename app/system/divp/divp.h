@@ -10,7 +10,7 @@ xxx版权所有。
 #include "venc.h"
 #include "mi_divp.h"
 
-#if 0
+#if 1
 typedef enum{
 	emResolInvalid = 0x00,
 	

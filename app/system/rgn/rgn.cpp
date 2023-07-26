@@ -140,7 +140,7 @@ MI_S32 Rgn::rgnInit(MI_RGN_PaletteTable_t *pstPaletteTable)
 MI_S32 Rgn::rgnDeInit()
 {
 	cout << "Call Rgn::rgnDeInit()." << endl;
-		
+	
 	MI_S32 s32Ret = 0;
 	MI_U16 u16SocId;
 	s32Ret = MI_RGN_DeInit();
@@ -415,10 +415,10 @@ MI_U32 Rgn::osdCreate_N(MI_U32 u32OsdUsedNum)
 	cout << "Call Rgn::osdCreate_N()." << endl;
 
 	const MI_U16 u16Sx = 100;			// 若干个OSD 的起点坐标
-	const MI_U16 u16Sy = 400;
-	const MI_U16 u16Width = 500;		// 每个OSD 的宽高
-	const MI_U16 u16Height = 40;
-	const MI_U16 u16IntervalX = 0;		// OSD 之间的间隔
+	const MI_U16 u16Sy = 100;
+	const MI_U16 u16Width = 960;		// 每个OSD 的宽高
+	const MI_U16 u16Height = 64;
+	const MI_U16 u16IntervalX = 10;		// OSD 之间的间隔
 	const MI_U16 u16IntervalY = 0;
 
 	// OSD 区域属性，用于设置宽高、像素格式。
