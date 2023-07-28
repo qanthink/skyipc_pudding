@@ -829,17 +829,24 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 	MI_VENC_ChnAttr_t stChnAttr;
 	memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
 
+	stChnAttr.stVeAttr.stAttrJpeg.u32BufSize = ALIGN_UP(width*height*7, 16);
 	stChnAttr.stVeAttr.eType = E_MI_VENC_MODTYPE_JPEGE;
-	//stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
-	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
+	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
+	//stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
+	stChnAttr.stRcAttr.stAttrMjpegCbr.u32BitRate = 30;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicWidth = width;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicHeight = height;
 	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicWidth = width;
-	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = height;
-	stChnAttr.stVeAttr.stAttrJpeg.bByFrame = TRUE;
-	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateNum = 10;
+	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = ALIGN_UP(height, 16);
+	{
+		stChnAttr.stVeAttr.stAttrJpeg.bByFrame = TRUE;
+		stChnAttr.stVeAttr.stAttrJpeg.u32RestartMakerPerRowCnt = 0;
+	}
+	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateNum = 20;
 	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateDen = 1;
-	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 1;
+	stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateNum = 30;
+	stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateDen = 1;
+	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 20;
 
 	MI_S32 s32Ret = 0;
 	s32Ret = MI_VENC_CreateChn(vencChn, &stChnAttr);
@@ -850,6 +857,14 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 		return s32Ret;
 	}
 
+	s32Ret = MI_VENC_SetMaxStreamCnt(vencChn, 4);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_VENC_SetMaxStreamCnt() in Venc::createJpegStream(), s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
+
+	#if 0
 	MI_VENC_ParamJpeg_t stParamJpeg;
 	memset(&stParamJpeg, 0, sizeof(MI_VENC_ParamJpeg_t));
 	s32Ret = MI_VENC_GetJpegParam(vencChn, &stParamJpeg);
@@ -862,6 +877,12 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 
 	stParamJpeg.u32Qfactor = 10;
 	//stParamJpeg.u32Qfactor = stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor > 0 ? stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor : 60;
+	int i = 0;
+	for (i = 0; i < 64; i++)
+    {
+        stParamJpeg.au8YQt[i] = 16;
+        stParamJpeg.au8CbCrQt[i] = 17;
+    }
 	s32Ret = MI_VENC_SetJpegParam(vencChn, &stParamJpeg);
 	if(0 != s32Ret)
 	{
@@ -869,9 +890,10 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 			<< " s32Ret = " << s32Ret << endl;
 		return s32Ret;
 	}
-
+#endif
 	//s32Ret = MI_VENC_GetChnDevid(vencChn, &u32DevId);
 
+	#if 0
 	MI_VENC_InputSourceConfig_t stInputSource;
 	stInputSource.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_NORMAL_FRMBASE;
 	s32Ret = MI_VENC_SetInputSourceConfig(vencChn, &stInputSource);
@@ -881,16 +903,18 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 			<< " s32Ret = " << s32Ret << endl;
 		return s32Ret;
 	}
+	#endif
+
 	
 #if 1
-	s32Ret = createChn(vencChn, &stChnAttr);
+	#if 0
+	s32Ret = MI_VENC_CreateChn(vencChn, &stChnAttr);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call createChn() in Venc::createJpegStream(), s32Ret = " << s32Ret << endl;
-		return s32Ret;
+		cerr << "Fail to call MI_VENC_CreateChn() in Venc::createJpegStream(), errno = " << s32Ret << endl;
 	}
+	#endif
 
-	//MI_VENC_SetMaxStreamCnt(vencChn, 3);
 #endif
 #if 1
 	s32Ret = MI_VENC_StartRecvPic(vencChn);

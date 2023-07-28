@@ -101,10 +101,10 @@ int main(int argc, const char *argv[])
 
 	// 创建jpeg码流
 	#if (1 == (USE_VENC_JPEG))
-	pVpe->createPort(Vpe::vpeMainPort, 3840, 2160);
-	pVenc->createJpegStream(Venc::vencJpegChn, 3840, 2160);
-	pVenc->changeBitrate(Venc::vencJpegChn, 0.01 * 1024);
-	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencJpegChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	pVpe->createPort(Vpe::vpeSubPort, snrW, snrH);
+	pVenc->createJpegStream(Venc::vencSubChn, snrW, snrH);
+	//pVenc->changeBitrate(Venc::vencSubChn, 0.01 * 1024);
+	pSys->bindVpe2Venc(Vpe::vpeSubPort,Venc::vencSubChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
 	#endif
 	#endif
 
@@ -208,7 +208,7 @@ int main(int argc, const char *argv[])
 	// 测试JPEG 码流
 	#if (1 == (USE_VENC_JPEG))
 	cout << "routeVideoJpeg" << endl;
-	thread thVideoJpeg(routeVideo, (void *)Venc::vencJpegChn);
+	thread thVideoJpeg(routeVideo, (void *)Venc::vencSubChn);
 	#endif
 
 	int ret = 0;

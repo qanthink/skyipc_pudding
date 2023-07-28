@@ -188,7 +188,7 @@ int Live555Rtsp::addStream(const char *filePath, const char *streamName, emEncTy
 	// "ServerMediaSubsession" objects for each audio/video substream.
 
 	/* 超大I 帧Size. 解决 The input frame data was too large for our buffer size (60972). */
-	OutPacketBuffer::maxSize = 512 * 1024;
+	OutPacketBuffer::maxSize = 3 * 1024 * 1024;
 
 	#if 0
 	// 创建媒体会话。
@@ -285,6 +285,7 @@ int Live555Rtsp::removeStream(const char *streamName)
 	pRtspServer->deleteServerMediaSession(streamName);
 	streamMap.erase(streamName);
 	cout << "Call Live555Rtsp::removeStream() end." << endl;
+	return 0;
 }
 
 /*-----------------------------------------------------------------------------

@@ -346,7 +346,7 @@ void *routeVideo(void *arg)
 	unsigned int uFrameCnt = SAVE_TIME_SECONDS * 30;		// 写入文件的帧数。N * FPS = N秒。
 	//const char *filePath = "/customer/video.265";
 	const unsigned int pathLen = 1024;
-	char *prefix = "/mnt/Downloads/video";
+	const char *prefix = "/mnt/Downloads/video";
 	char filePath[pathLen] = "";
 	snprintf(filePath, pathLen, "%s%d", prefix, u32VencChn);
 	mode_t mode = 0666;
@@ -369,7 +369,7 @@ void *routeVideo(void *arg)
 	snprintf(videoName, nameSize, "%s%d", "video", u32VencChn);
 	cout << "live555 rtsp file : " << videoName << endl;
 	unlink(videoName);
-	MyNameFifo myNameFifo(videoName, Venc::superMaxISize);
+	MyNameFifo myNameFifo(videoName, 1 * 1024 * 1024);
 
 	emEncType_t emEncType = emEncTypeInvalid;
 	Venc *pVenc = Venc::getInstance();
@@ -402,6 +402,7 @@ void *routeVideo(void *arg)
 	{
 		MI_S32 s32Ret = 0;
 		MI_VENC_Stream_t stStream;
+		memset(&stStream, 0, sizeof(MI_VENC_Stream_t));
 		Venc *pVenc = Venc::getInstance();
 		s32Ret = pVenc->rcvStream(u32VencChn, &stStream);
 		if(0 != s32Ret)
@@ -410,6 +411,7 @@ void *routeVideo(void *arg)
 			continue;
 		}
 
+		//cout << stStream.u32PackCount << endl;
 		int i = 0;		// 2020.7.22 增加for 循环，适配slice mode 下数据需要多片分发。
 		for(i = 0; i < stStream.u32PackCount; ++i)
 		{

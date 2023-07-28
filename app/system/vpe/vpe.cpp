@@ -390,7 +390,7 @@ MI_S32 Vpe::createPort(MI_VPE_PORT vpePort, unsigned int width, unsigned int hei
 		cerr << "Fail to call setPortMode(), errno = " << s32Ret << endl;
 	}
 
-	s32Ret = setChnOutputPortDepth(vpePort, 0, 4);
+	s32Ret = setChnOutputPortDepth(vpePort, 4, 5);
 	if(0 != s32Ret)
 	{
 		cerr << "Fail to call setChnOutputPortDepth(), errno = " << s32Ret << endl;

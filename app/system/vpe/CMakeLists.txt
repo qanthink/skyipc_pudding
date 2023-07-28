@@ -4,5 +4,7 @@ add_library(vpe ${DIR_APP_SRC})
 
 include_directories(../sensor)
 
-target_link_libraries(vpe mi_vpe mi_isp cus3a ispalgo cam_os_wrapper)
+target_link_libraries(vpe mi_vpe mi_isp cus3a ispalgo 
+	cam_os_wrapper
+)
 
