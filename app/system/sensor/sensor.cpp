@@ -18,8 +18,6 @@ Sensor::Sensor()
 Sensor::~Sensor()
 {
 	disable();
-	
-	u32ResCnt = 0;
 	bEnable = false;
 }
 

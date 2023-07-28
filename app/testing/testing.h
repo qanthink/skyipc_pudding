@@ -57,9 +57,9 @@ xxx版权所有。
 #define USE_OSD				0
 
 // venc
-#define USE_VENC_MAIN		1
-#define USE_VENC_SUB		1
-#define USE_VENC_JPEG		0
+#define USE_VENC_MAIN		0
+#define USE_VENC_SUB		0
+#define USE_VENC_JPEG		1
 #define USE_VENC_SAVE_LOCAL_FILE	0
 #define SAVE_TIME_SECONDS	10
 
@@ -72,7 +72,7 @@ xxx版权所有。
 
 // rtsp
 #define USE_RTSPSERVER_LOCALFILE	0
-#define USE_RTSPSERVER_LIVESTREAM_MAIN	1
+#define USE_RTSPSERVER_LIVESTREAM_MAIN	0
 #define USE_RTSPSERVER_LIVESTREAM_SUB	1
 #define USE_RTSPSERVER_LIVESTREAM_JPEG	0
 

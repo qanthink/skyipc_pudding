@@ -36,6 +36,7 @@ xxx版权所有。
 //#include "ethernet.h"
 //#include "atp_client.h"
 //#include "vtp_client.h"
+#include "live555rtsp.h"
 
 using namespace std;
 
@@ -345,10 +346,12 @@ void *routeVideo(void *arg)
 	unsigned int uFrameCnt = SAVE_TIME_SECONDS * 30;		// 写入文件的帧数。N * FPS = N秒。
 	//const char *filePath = "/customer/video.265";
 	const unsigned int pathLen = 1024;
-	char filePath[pathLen] = "/mnt/linux/Downloads/video";
-	snprintf(filePath, pathLen, "%s%d", filePath, u32VencChn);
+	char *prefix = "/mnt/Downloads/video";
+	char filePath[pathLen] = "";
+	snprintf(filePath, pathLen, "%s%d", prefix, u32VencChn);
 	mode_t mode = 0666;
-	
+
+	cout << "Ready to open file " << filePath << endl;
 	fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, mode);		// 只写 | 如果不存在则创建 | 如果存在则清空
 	if(-1 == fd)
 	{
@@ -410,7 +413,7 @@ void *routeVideo(void *arg)
 		int i = 0;		// 2020.7.22 增加for 循环，适配slice mode 下数据需要多片分发。
 		for(i = 0; i < stStream.u32PackCount; ++i)
 		{
-			if(stStream.pstPack[i].u32Len > Venc::superMaxISize)
+			if(stStream.pstPack[i].u32Len > Venc::superMaxISize && E_MI_VENC_MODTYPE_JPEGE != Venc::getInstance()->getVesType(u32VencChn))
 			{
 				cerr << "stStream.pstPack[" << i << "].u32Len is out of range." << endl;
 				break;
@@ -477,7 +480,7 @@ void *routeVideo(void *arg)
 				{
 					close(fd);
 					fd = -1;
-					cout << "Write local H.26X file over. Close file." << endl;
+					cout << "Write local video file over. Close file." << endl;
 				}
 			}
 			#endif
@@ -1001,9 +1004,12 @@ int interAction()
 		pVenc->getResolution(Venc::vencMainChn, &oldWidthMain, &oldHeightMain);
 		printf("oldWidthSub = %d, oldHeightSub = %d.\n", oldWidthSub, oldHeightSub);
 		printf("oldWidthMain = %d, oldHeightMain = %d.\n", oldWidthMain, oldHeightMain);
-	
+
+		#if (1 == (USE_RTSPSERVER_LOCALFILE) || 1 == (USE_RTSPSERVER_LIVESTREAM_MAIN) \
+			|| 1 == (USE_RTSPSERVER_LIVESTREAM_SUB) || 1 == (USE_RTSPSERVER_LIVESTREAM_JPEG))
 		pLive555Rtsp->removeStream("video0");
 		pLive555Rtsp->removeStream("video1");
+		#endif
 
 		Vpe *pVpe = Vpe::getInstance();
 		// 销毁主码流

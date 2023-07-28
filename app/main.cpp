@@ -58,7 +58,7 @@ int main(int argc, const char *argv[])
 
 	// Sensor 初始化。数据流向：sensor -> vif -> vpe -> (DIVP) -> venc -> 应用处理。
 	Sensor *pSensor = Sensor::getInstance();	// sensor 初始化
-	pSensor->setFps(30);
+	pSensor->setFps(20);
 
 	unsigned int snrW = 0;
 	unsigned int snrH = 0;
@@ -84,27 +84,32 @@ int main(int argc, const char *argv[])
 	// 创建子码流
 	unsigned int subW = 1280;
 	unsigned int subH = 720;
+	#if (1 == (USE_VENC_SUB))
 	pVpe->createPort(Vpe::vpeSubPort, subW, subH);
 	pVenc->createH26xStream(Venc::vencSubChn, subW, subH, Venc::vesTypeH264);
 	pVenc->changeBitrate(Venc::vencSubChn, 0.25 * 1024);
 	pSys->bindVpe2Venc(Vpe::vpeSubPort, Venc::vencSubChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#endif
 
 	// 创建主码流
+	#if (1 == (USE_VENC_MAIN))
 	pVpe->createPort(Vpe::vpeMainPort, snrW, snrH);
 	pVenc->createH26xStream(Venc::vencMainChn, snrW, snrH, Venc::vesTypeH264);
 	pVenc->changeBitrate(Venc::vencMainChn, 1 * 1024);
 	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencMainChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#endif
 
 	// 创建jpeg码流
-	pVpe->createPort(Vpe::vpeMainPort, snrW, snrH);
-	pVenc->createJpegStream(Venc::vencJpegChn, snrW, snrH);
-	pVenc->changeBitrate(Venc::vencJpegChn, 10);
-	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencJpegChn, 30, 30, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#if (1 == (USE_VENC_JPEG))
+	pVpe->createPort(Vpe::vpeMainPort, 3840, 2160);
+	pVenc->createJpegStream(Venc::vencJpegChn, 3840, 2160);
+	pVenc->changeBitrate(Venc::vencJpegChn, 0.01 * 1024);
+	pSys->bindVpe2Venc(Vpe::vpeMainPort, Venc::vencJpegChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
+	#endif
 	#endif
 
 	// VENC 也可以实现图像的Crop 和Scale, 但是建议在VPE 中做。
 	//pVenc->setCrop(Venc::vencMainChn, (2560 - 1920) / 2, (1440 - 1080) / 2, 1920, 1080);
-	#endif
 
 	// 初始化OSD
 	#if (1 == (USE_OSD))
@@ -124,6 +129,7 @@ int main(int argc, const char *argv[])
 	
 	#if (1 == (USE_AO))
 	AudioOut *pAudioOut = AudioOut::getInstance();
+	#endif
 	#endif
 
 	/*

@@ -680,9 +680,11 @@ MI_S32 Venc::createStreamWithAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChn
 	s32Ret = MI_VENC_SetInputSourceConfig(vencChn, &stInputSource);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call Venc::MI_VENC_SetInputSourceConfig(), s32Ret = " << s32Ret << endl;
+		cerr << "Fail to call Venc::MI_VENC_SetInputSourceConfig() in createStreamWithAttr()."
+			<< " s32Ret = " << s32Ret << endl;
 		return s32Ret;
 	}
+	
 
 	s32Ret = startRecvPic(vencChn);					// 开始接受通道数据
 	if(0 != s32Ret)
@@ -704,7 +706,7 @@ MI_S32 Venc::createStreamWithAttr(MI_VENC_CHN vencChn, MI_VENC_ChnAttr_t *pstChn
 -----------------------------------------------------------------------------*/
 MI_S32 Venc::createH26xStream(MI_VENC_CHN vencChn, unsigned int width, unsigned int height, MI_VENC_ModType_e vesType)
 {
-	cout << "Call Venc::createH26xStream() end." << endl;
+	cout << "Call Venc::createH26xStream()." << endl;
 
 	MI_VENC_ChnAttr_t stChnAttr;
 	memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
@@ -788,7 +790,8 @@ MI_S32 Venc::createH26xStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 	s32Ret = MI_VENC_SetInputSourceConfig(vencChn, &stInputSource);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call Venc::MI_VENC_SetInputSourceConfig(), s32Ret = " << s32Ret << endl;
+		cerr << "Fail to call Venc::MI_VENC_SetInputSourceConfig() in createH26xStream()."
+			<< " s32Ret = " << s32Ret << endl;
 		return s32Ret;
 	}
 
@@ -821,29 +824,65 @@ MI_S32 Venc::createH26xStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 -----------------------------------------------------------------------------*/
 MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned int height)
 {
-	cout << "Call Venc::createJpegStream() end." << endl;
+	cout << "Call Venc::createJpegStream()." << endl;
 
 	MI_VENC_ChnAttr_t stChnAttr;
 	memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
 
-	//stChnAttr.stVeAttr.stAttrJpeg.u32BufSize = 2 * width * height;	// 不小于最大宽高的乘积
-	stChnAttr.stVeAttr.stAttrJpeg.u32BufSize = ALIGN_UP(width*height*3/4, 16);
-	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
+	stChnAttr.stVeAttr.eType = E_MI_VENC_MODTYPE_JPEGE;
+	//stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
+	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicWidth = width;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicHeight = height;
 	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicWidth = width;
-	//stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = height;
-	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = ALIGN_UP(height, 16);
+	stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = height;
 	stChnAttr.stVeAttr.stAttrJpeg.bByFrame = TRUE;
-	stChnAttr.stVeAttr.eType = E_MI_VENC_MODTYPE_JPEGE;
-	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateNum = 30;
-	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateDen = 1;
-	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 1;
+	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateNum = 10;
+	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateDen = 1;
+	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 1;
+
+	MI_S32 s32Ret = 0;
+	s32Ret = MI_VENC_CreateChn(vencChn, &stChnAttr);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_VENC_CreateChn() in Venc::createJpegStream()."
+			<< " s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
+
+	MI_VENC_ParamJpeg_t stParamJpeg;
+	memset(&stParamJpeg, 0, sizeof(MI_VENC_ParamJpeg_t));
+	s32Ret = MI_VENC_GetJpegParam(vencChn, &stParamJpeg);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_VENC_GetJpegParam() in Venc::createJpegStream()."
+			<< " s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
+
+	stParamJpeg.u32Qfactor = 10;
+	//stParamJpeg.u32Qfactor = stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor > 0 ? stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor : 60;
+	s32Ret = MI_VENC_SetJpegParam(vencChn, &stParamJpeg);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call MI_VENC_SetJpegParam() in Venc::createJpegStream()."
+			<< " s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
+
+	//s32Ret = MI_VENC_GetChnDevid(vencChn, &u32DevId);
 
 	MI_VENC_InputSourceConfig_t stInputSource;
-	stInputSource.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_RING_ONE_FRM;
+	stInputSource.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_NORMAL_FRMBASE;
+	s32Ret = MI_VENC_SetInputSourceConfig(vencChn, &stInputSource);
+	if(0 != s32Ret)
+	{
+		cerr << "Fail to call Venc::MI_VENC_SetInputSourceConfig() in createJpegStream()."
+			<< " s32Ret = " << s32Ret << endl;
+		return s32Ret;
+	}
 	
-	MI_S32 s32Ret = 0;
+#if 1
 	s32Ret = createChn(vencChn, &stChnAttr);
 	if(0 != s32Ret)
 	{
@@ -851,14 +890,17 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 		return s32Ret;
 	}
 
-	MI_VENC_SetMaxStreamCnt(vencChn, 3);
-
-	s32Ret = startRecvPic(vencChn);
+	//MI_VENC_SetMaxStreamCnt(vencChn, 3);
+#endif
+#if 1
+	s32Ret = MI_VENC_StartRecvPic(vencChn);
 	if(0 != s32Ret)
 	{
-		cerr << "Fail to call startRecvPic() in Venc::createJpegStream(), s32Ret = " << s32Ret << endl;
+		cerr << "Fail to call MI_VENC_StartRecvPic() in Venc::createJpegStream()."
+			<< " s32Ret = " << s32Ret << endl;
 		return s32Ret;
 	}
+#endif
 	
 	cout << "Call Venc::createJpegStream() end." << endl;
 	return s32Ret;
@@ -1029,7 +1071,7 @@ void Venc::printStreamInfo(const MI_VENC_Stream_t *pstVencStream)
 -----------------------------------------------------------------------------*/
 MI_VENC_ModType_e Venc::getVesType(MI_VENC_CHN vencChn)
 {
-	cout << "Call Venc::getVesType()." << endl;
+	//cout << "Call Venc::getVesType()." << endl;
 
 	MI_VENC_ChnAttr_t stChnAttr;
 	memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
@@ -1043,7 +1085,7 @@ MI_VENC_ModType_e Venc::getVesType(MI_VENC_CHN vencChn)
 		return E_MI_VENC_MODTYPE_VENC;
 	}
 
-	cout << "Call Venc::getVesType() end." << endl;
+	//cout << "Call Venc::getVesType() end." << endl;
 	return stChnAttr.stVeAttr.eType;
 }
 
