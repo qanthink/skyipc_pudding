@@ -13,7 +13,7 @@ xxx版权所有。
 #include <thread>
 
 #include "../system/venc/venc.h"
-#include "JPEGVideoServerMediaSubsession.hh"
+#include "JPEGVideoFileServerMediaSubsession.hh"
 
 using namespace std;
 
@@ -234,7 +234,7 @@ int Live555Rtsp::addStream(const char *filePath, const char *streamName, emEncTy
 	}
 	else if(emEncTypeJpeg == emEncType)
 	{
-		sms->addSubsession(JPEGVideoServerMediaSubsession::createNew(*mEnv, filePath, reuseFirstSource));
+		sms->addSubsession(JPEGVideoFileServerMediaSubsession::createNew(*mEnv, filePath, reuseFirstSource));
 	}
 	else
 	{

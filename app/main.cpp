@@ -101,8 +101,18 @@ int main(int argc, const char *argv[])
 
 	// 创建jpeg码流
 	#if (1 == (USE_VENC_JPEG))
+	#if 1
+	#if 1
+	pVpe->createPort(Vpe::vpeSubPort, 2560, 1440);
+	pVenc->createJpegStream(Venc::vencSubChn, 2560, 1440);
+	#else
+	pVpe->createPort(Vpe::vpeSubPort, 1920, 1080);
+	pVenc->createJpegStream(Venc::vencSubChn, 1920, 1080);
+	#endif
+	#else
 	pVpe->createPort(Vpe::vpeSubPort, snrW, snrH);
 	pVenc->createJpegStream(Venc::vencSubChn, snrW, snrH);
+	#endif
 	//pVenc->changeBitrate(Venc::vencSubChn, 0.01 * 1024);
 	pSys->bindVpe2Venc(Vpe::vpeSubPort,Venc::vencSubChn, 20, 20, E_MI_SYS_BIND_TYPE_FRAME_BASE, 0);
 	#endif

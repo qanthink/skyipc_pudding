@@ -4,7 +4,9 @@ xxx 版权所有。
 时间：2023.7.7
 ----------------------------------------------------------------*/
 
-#include <JPEGVideoSource.hh>
+#include "JPEGVideoSource.hh"
+#include "JPEG2000VideoRTPSource.hh"
+
 
 class JPEGVideoStreamSource: public JPEGVideoSource
 {
@@ -27,26 +29,30 @@ public: // redefined virtual functions
 	
 	virtual u_int8_t qFactor()
 	{
-		return 255;
+		return 60;
 	};
 	
 	virtual u_int8_t width()
 	{
+		//printf("w = %d\n", fWidth);
 		return fWidth;
 	};
 	
 	virtual u_int8_t height()
 	{
+		//printf("h = %d\n", fHeight);s
 		return fHeight;
 	};
 	
 	virtual u_int16_t widthPixels()
 	{
+		printf("w = %d\n", fWidthPixels);
 		return fWidthPixels;
 	};
 	
 	virtual u_int16_t heightPixels()
 	{
+		printf("h = %d\n", fHeightPixels);
 		return fHeightPixels;
 	};
 	

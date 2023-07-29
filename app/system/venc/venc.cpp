@@ -831,8 +831,8 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 
 	stChnAttr.stVeAttr.stAttrJpeg.u32BufSize = ALIGN_UP(width*height*7, 16);
 	stChnAttr.stVeAttr.eType = E_MI_VENC_MODTYPE_JPEGE;
-	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
-	//stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
+	//stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGCBR;
+	stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
 	stChnAttr.stRcAttr.stAttrMjpegCbr.u32BitRate = 30;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicWidth = width;
 	stChnAttr.stVeAttr.stAttrJpeg.u32PicHeight = height;
@@ -846,7 +846,7 @@ MI_S32 Venc::createJpegStream(MI_VENC_CHN vencChn, unsigned int width, unsigned 
 	//stChnAttr.stRcAttr.stAttrMjpegFixQp.u32SrcFrmRateDen = 1;
 	stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateNum = 30;
 	stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateDen = 1;
-	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 20;
+	stChnAttr.stRcAttr.stAttrMjpegFixQp.u32Qfactor = 1;
 
 	MI_S32 s32Ret = 0;
 	s32Ret = MI_VENC_CreateChn(vencChn, &stChnAttr);
